@@ -272,7 +272,95 @@ ul.task-list li input[type="checkbox"] {
 </ul></li>
 <li><p>To work with simple features, you can use the <code>sf</code> package from R which is part of the <code>tidyverse</code> collection.</p></li>
 <li><p>Simple features are represented via “simple features geometry (SFG)”, and they and geospatial data can be represented with “simple features objects (SFO)” which represent a collection of SFG as a data-frame object. The non-spatial data (metadata) are stored in a separate column separate from the SFG column. The data type of that SFG column is known as “simple features collection (SFC)”.</p></li>
+</ul></li>
+<li><p><code>sf</code> functions</p>
+<ul>
 <li><p><code>sf</code> also provides functions that help you in doing data manipulation and analysis of spatial data.</p></li>
+<li><p><code>st_read</code>: import a file or database into a SFO (more flexible but slower)</p>
+<ul>
+<li><p><code>read_sf</code>: import a file or database into a SFO (less flexible but more optimised)</p></li>
+<li><p>Supported file formats</p>
+<ul>
+<li><p>Shapefile</p>
+<ul>
+<li><p>A misnomer as it is basically a collection of files (hence a single <code>shp</code> file is not enough). File extensions include: <code>dbf</code>, <code>prj</code>, <code>shp</code>, <code>xml</code>, and <code>shx</code>.</p>
+<pre><code>sf_mpsz = st_read(dsn = "data/geospatial", layer = "MP14_SUBZONE")
+st_write(st_poly, "data/my_poly.shp")</code></pre></li>
+</ul></li>
+<li><p>MapInfo TAB</p></li>
+<li><p>KML (Google)</p>
+<pre><code>sf_preschool = st_read("data/geospatial/pre-schools-location-kml.kml")</code></pre>
+<p>You need to provide the file extension if it is not a Shapefile.</p></li>
+<li><p>GML</p></li>
+<li><p>GeoJSON (popular in web)</p></li>
+<li><p>TopoJSON (popular in web)</p></li>
+</ul></li>
+</ul></li>
+<li><p><code>st_write</code>: export a file from a SFO to a file or database</p>
+<ul>
+<li><code>write_sf</code>: export a file from a SFO to a file or database (less flexible but more optimised)</li>
+</ul></li>
+<li><p><code>st_as_sf</code>: convert existing data structures into a SFO</p></li>
+<li><p><code>st_as_text</code>: convert a SFO into “well-known text” (WKT) (it is the <code>to_string()</code> of SFO and represents the SFO data structure in a textual format)</p></li>
+<li><p><code>st_as_binary</code>: converts a SFO into a binary format</p></li>
+<li><p><code>st_transform</code>: Convert a SFO into another SFO with a different coordinate reference system via an EPSG code. For example, it can convert GCS data to PCS.</p>
+<ul>
+<li>A coordinate reference system is a system that specifies the datum (among other attributes) of the coordinate system. It can be represented as a numerical code known as the EPSG code.</li>
+</ul></li>
+<li><p><code>st_intersects</code>: whether two geometries touch or overlap each other</p>
+<ul>
+<li><p>Note that many <code>sf</code> functions may sound similar to each other but perform totally different tasks. For instance, <code>st_intersection</code> computes the intersection of two geometries but <code>st_intersects</code> merely tells you whether it intersects each other or not.</p></li>
+<li><p>In short, <code>st_intersects</code> checks whether each geometry in each SFO intersects with each other. Many other functions in this category work the same way. Like many other functions in this category, it returns a sparse list.</p></li>
+<li><p>Sparse lists</p>
+<ul>
+<li><p>A sparse list is a way of efficiently representing the relationship of a geometry in one set with respect to another geometry in another set without using a full matrix.</p></li>
+<li><p>Using <code>st_intersects</code>:</p>
+<pre><code># Example sparse list
+result &lt;- list(
+  c(2, 3),
+  integer(0),
+  c(1, 4)
+)</code></pre>
+<ul>
+<li><p><strong><code>result[[1]]</code> (</strong>First Geometry <strong>in <code>A</code>):</strong></p>
+<ul>
+<li>The first element <code>c(2, 3)</code> means that the first geometry in <code>A</code> intersects with the 2nd and 3rd geometries in <code>B</code>.</li>
+</ul></li>
+<li><p><strong><code>result[[2]]</code> (</strong>Second Geometry <strong>in <code>A</code>):</strong></p>
+<ul>
+<li>The second element <code>integer(0)</code> (an empty integer vector) means that the second geometry in <code>A</code> does not intersect with any geometry in <code>B</code>.</li>
+</ul></li>
+<li><p><strong><code>result[[3]]</code> (</strong>Third Geometry <strong>in <code>A</code>):</strong></p>
+<ul>
+<li>The third element <code>c(1, 4)</code> means that the third geometry in <code>A</code> intersects with the 1st and 4th geometries in <code>B</code>.</li>
+</ul></li>
+<li><p>Note that sparse lists do not include symmetric pairs, e.g., <code>(2, 4</code> and <code>(4, 2)</code> are repeated.</p></li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><p>Functions that return a logical matrix indicating whether each geometry pair meets the logical operation</p>
+<ul>
+<li><p><code>st_disjoint</code>: equivalent to performing a NOT boolean operation on the result of <code>st_intersects</code></p></li>
+<li><p><code>st_touches</code>: touch</p></li>
+<li><p><code>st_crosses</code>: cross</p></li>
+<li><p><code>st_within</code>: within</p></li>
+<li><p><code>st_contains</code>: overlap</p></li>
+<li><p><code>st_overlaps</code>: overlaps</p></li>
+<li><p><code>st_covers</code>: cover</p></li>
+<li><p><code>st_covered_by</code>: covered by</p></li>
+<li><p><code>st_equals</code>: equals</p></li>
+<li><p><code>st_equals_exact</code>: equals, with some fuzz</p>
+<ul>
+<li>Returns a sparse (default) or dense logical matrix.</li>
+</ul></li>
+</ul></li>
+<li><p>Geometry generating logical operators:</p>
+<ul>
+<li><p><code>st_union</code>: union of several geometries</p></li>
+<li><p><code>st_intersection</code>: intersection of pairs of geometries</p></li>
+<li><p><code>st_difference</code>: difference between pairs of geometries</p></li>
+<li><p><code>st_sym_difference</code>: symmetric difference (XOR)</p></li>
+</ul></li>
 </ul></li>
 </ul>
 

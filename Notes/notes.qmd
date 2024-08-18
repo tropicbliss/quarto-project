@@ -132,4 +132,120 @@ title: "Notes"
 
     -   Simple features are represented via "simple features geometry (SFG)", and they and geospatial data can be represented with "simple features objects (SFO)" which represent a collection of SFG as a data-frame object. The non-spatial data (metadata) are stored in a separate column separate from the SFG column. The data type of that SFG column is known as "simple features collection (SFC)".
 
+-   `sf` functions
+
     -   `sf` also provides functions that help you in doing data manipulation and analysis of spatial data.
+
+    -   `st_read`: import a file or database into a SFO (more flexible but slower)
+
+        -   `read_sf`: import a file or database into a SFO (less flexible but more optimised)
+
+        -   Supported file formats
+
+            -   Shapefile
+
+                -   A misnomer as it is basically a collection of files (hence a single `shp` file is not enough). File extensions include: `dbf`, `prj`, `shp`, `xml`, and `shx`.
+
+                    ```         
+                    sf_mpsz = st_read(dsn = "data/geospatial", layer = "MP14_SUBZONE")
+                    st_write(st_poly, "data/my_poly.shp")
+                    ```
+
+            -   MapInfo TAB
+
+            -   KML (Google)
+
+                ```         
+                sf_preschool = st_read("data/geospatial/pre-schools-location-kml.kml")
+                ```
+
+                You need to provide the file extension if it is not a Shapefile.
+
+            -   GML
+
+            -   GeoJSON (popular in web)
+
+            -   TopoJSON (popular in web)
+
+    -   `st_write`: export a file from a SFO to a file or database
+
+        -   `write_sf`: export a file from a SFO to a file or database (less flexible but more optimised)
+
+    -   `st_as_sf`: convert existing data structures into a SFO
+
+    -   `st_as_text`: convert a SFO into "well-known text" (WKT) (it is the `to_string()` of SFO and represents the SFO data structure in a textual format)
+
+    -   `st_as_binary`: converts a SFO into a binary format
+
+    -   `st_transform`: Convert a SFO into another SFO with a different coordinate reference system via an EPSG code. For example, it can convert GCS data to PCS.
+
+        -   A coordinate reference system is a system that specifies the datum (among other attributes) of the coordinate system. It can be represented as a numerical code known as the EPSG code.
+
+    -   `st_intersects`: whether two geometries touch or overlap each other
+
+        -   Note that many `sf` functions may sound similar to each other but perform totally different tasks. For instance, `st_intersection` computes the intersection of two geometries but `st_intersects` merely tells you whether it intersects each other or not.
+
+        -   In short, `st_intersects` checks whether each geometry in each SFO intersects with each other. Many other functions in this category work the same way. Like many other functions in this category, it returns a sparse list.
+
+        -   Sparse lists
+
+            -   A sparse list is a way of efficiently representing the relationship of a geometry in one set with respect to another geometry in another set without using a full matrix.
+
+            -   Using `st_intersects`:
+
+                ```         
+                # Example sparse list
+                result <- list(
+                  c(2, 3),
+                  integer(0),
+                  c(1, 4)
+                )
+                ```
+
+                -   **`result[[1]]` (**First Geometry **in `A`):**
+
+                    -   The first element `c(2, 3)` means that the first geometry in `A` intersects with the 2nd and 3rd geometries in `B`.
+
+                -   **`result[[2]]` (**Second Geometry **in `A`):**
+
+                    -   The second element `integer(0)` (an empty integer vector) means that the second geometry in `A` does not intersect with any geometry in `B`.
+
+                -   **`result[[3]]` (**Third Geometry **in `A`):**
+
+                    -   The third element `c(1, 4)` means that the third geometry in `A` intersects with the 1st and 4th geometries in `B`.
+
+                -   Note that sparse lists do not include symmetric pairs, e.g., `(2, 4` and `(4, 2)` are repeated.
+
+    -   Functions that return a logical matrix indicating whether each geometry pair meets the logical operation
+
+        -   `st_disjoint`: equivalent to performing a NOT boolean operation on the result of `st_intersects`
+
+        -   `st_touches`: touch
+
+        -   `st_crosses`: cross
+
+        -   `st_within`: within
+
+        -   `st_contains`: overlap
+
+        -   `st_overlaps`: overlaps
+
+        -   `st_covers`: cover
+
+        -   `st_covered_by`: covered by
+
+        -   `st_equals`: equals
+
+        -   `st_equals_exact`: equals, with some fuzz
+
+            -   Returns a sparse (default) or dense logical matrix.
+
+    -   Geometry generating logical operators:
+
+        -   `st_union`: union of several geometries
+
+        -   `st_intersection`: intersection of pairs of geometries
+
+        -   `st_difference`: difference between pairs of geometries
+
+        -   `st_sym_difference`: symmetric difference (XOR)
