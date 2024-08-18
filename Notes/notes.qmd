@@ -1,0 +1,135 @@
+---
+title: "Notes"
+---
+
+-   Geospatial data is data stored in a special database that can be thought of as a simplified model of the real world.
+
+-   Types of geospatial data
+
+    -   Vector
+
+        -   Stores data that are discrete in nature (you can count the total number of data that is representable)
+
+        -   The SVG of geospatial data
+
+        -   Data primitives (simple features)
+
+            -   Points
+
+                -   Coordinate
+
+                -   Examples
+
+                    -   Landmarks
+
+            -   Polyline (line + polygon)
+
+                -   Series of coordinates known as vertices (though like other data types they might also contain additional metadata such as road names)
+
+                -   Examples
+
+                    -   Roads
+
+            -   Polygon
+
+                -   Consists of three or more line segments, and the starting and end coordinates must be the same, but how they are stored is almost the same as how vertices are stored in a polyline.
+
+                -   Buildings
+
+    -   Raster (simple features)
+
+        -   Stores data that are continuous in nature (data that does not have a clear cut off point)
+
+        -   The JPEG of geospatial data
+
+        -   Elevation
+
+        -   The area of interest is divided into cells (which are essentially pixels on the screen). A grid typically only stores a single attribute of the area of interest, and each grid is responsible for a certain real world area size (such as 10x10 metres). The data stored in each grid is fixed. For instance, a grid can store a single 32 bit floating point value.
+
+-   Coordinate system
+
+    -   Coordinates stored in different coordinate systems will have wildly different values relative to each other.
+
+    -   Types
+
+        -   Geographical coordinate systems
+
+            -   Uses a three dimensional system to encode data
+
+                -   Latitude
+
+                    -   Vertical line
+
+                    -   0 degrees at the equator, +90 degrees in the north pole and -90 degrees in the south pole
+
+                -   Longitude
+
+                    -   Horizontal line
+
+                        -   0 degrees at Greenwich
+
+                            -   0 to +180 degrees (east)
+
+                            -   0 to -180 degrees (west)
+
+                -   Datum
+
+                    -   Defines the shape and the size of the earth as the equator or Greenwich while being used as a reference for the coordinate system does not define how much it varies as you stray further away from it.
+
+                    -   Examples
+
+                        -   WGS84
+
+                            -   Defines the earth as an ellipsoid
+
+            -   Not suitable for distance measurement as it takes the curvature of the earth into account which makes it more challenging to calculate. A single degree of difference can lead to different distances depending on the coordinates of the start and end points.
+
+        -   Projected coordinate system
+
+            -   Examples
+
+                -   SVY21 (Singapore)
+
+            -   Provides consistent area measurements.
+
+            -   Important to convert from GCS to PCS before conducting analysis.
+
+            -   Large countries might use multiple PCS.
+
+            -   Each country or state might have their own PCS to minimise distortions from projecting a spherical surface into a plane, to create an accurate representation of an area.
+
+-   Simple features
+
+    -   There are about 17 of them, 3 of them having been mentioned above.
+
+    -   Most software typically only use a subset of them.
+
+    -   Types
+
+        -   Point
+
+            -   `Point(30, 10)`
+
+        -   Multi point
+
+            -   `MultiPoint([Point(10, 40), Point(40, 30), Point(20, 20), Point(30, 10)])`
+
+        -   Line string
+
+            -   `LineString([Point(30, 10), Point(10, 30), Point(40, 40)])`
+
+        -   Polygon
+
+            -   `Polygon([Point(30, 10), Point(40, 40), Point(20, 40), Point(10, 20), Point(30, 10)])`
+
+            -   `Polygon([[Point(35, 10), Point(45, 45), Point(15, 40), Point(10, 20), Point(35, 10)], [Point(20, 30), Point(35, 35), Point(30, 20), Point(20, 30)]])`
+
+        -   MultiX
+
+            -   "Multi" versions of the above primitives but have them be elements of an array.
+
+    -   To work with simple features, you can use the `sf` package from R which is part of the `tidyverse` collection.
+
+    -   Simple features are represented via "simple features geometry (SFG)", and they and geospatial data can be represented with "simple features objects (SFO)" which represent a collection of SFG as a data-frame object. The non-spatial data (metadata) are stored in a separate column separate from the SFG column. The data type of that SFG column is known as "simple features collection (SFC)".
+
+    -   `sf` also provides functions that help you in doing data manipulation and analysis of spatial data.

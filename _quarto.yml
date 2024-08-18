@@ -13,6 +13,8 @@ website:
       - href: index.qmd
         text: Home
       - about.qmd
+      - text: "Notes"
+        href: "Notes/notes.qmd"
 
 format:
   html:
