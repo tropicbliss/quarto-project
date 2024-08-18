@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -388,6 +422,27 @@ result &lt;- list(
 <p><a href="https://r-spatial.github.io/sf/reference/st_join.html"><img src="https://r-spatial.github.io/sf/reference/st_join-1.png" class="img-fluid figure-img" alt="Illustration of st_join"></a></p>
 <figcaption>Illustration of st_join</figcaption>
 </figure>
+</div>
+<p>Observe that <code>st_join</code> does not do any interpolation or any mathematical operations. It also does not include any points in <code>b</code>. Any repeating data from the merge is included in the final output as an additional row.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>))))</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>b <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">11</span><span class="sc">:</span><span class="dv">15</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">10</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">12</span>,<span class="dv">12</span>))))</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">st_join</span>(a, b)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Simple feature collection with 4 features and 2 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: 1 ymin: 1 xmax: 3 ymax: 3
+CRS:           NA
+    a.x a.y        geom
+1     1  NA POINT (1 1)
+2     2  12 POINT (2 2)
+2.1   2  13 POINT (2 2)
+3     3  14 POINT (3 3)</code></pre>
+</div>
 </div></li>
 </ul></li>
 </ul></li>

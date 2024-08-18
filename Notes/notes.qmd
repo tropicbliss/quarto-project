@@ -280,6 +280,17 @@ title: "Notes"
 
                 [![Illustration of st_join](https://r-spatial.github.io/sf/reference/st_join-1.png)](https://r-spatial.github.io/sf/reference/st_join.html)
 
+                Observe that `st_join` does not do any interpolation or any mathematical operations. It also does not include any points in `b`. Any repeating data from the merge is included in the final output as an additional row.
+
+                ```{r}
+                pacman::p_load(sf)
+                a = st_sf(a = 1:3,
+                 geom = st_sfc(st_point(c(1,1)), st_point(c(2,2)), st_point(c(3,3))))
+                b = st_sf(a = 11:15,
+                 geom = st_sfc(st_point(c(10,10)), st_point(c(2,2)), st_point(c(2,2)), st_point(c(3,3)), st_point(c(12,12))))
+                st_join(a, b)
+                ```
+
     -   Manipulating geometries (spatial data wrangling) (generates new data out of existing data) (the output SFC does not contain any input data)
 
         -   `st_line_merge`: merges lines
