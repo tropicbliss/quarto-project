@@ -1,5 +1,7 @@
 ---
 title: "Notes"
+execute:
+  freeze: true
 ---
 
 -   GIS is a software tool to analyse and visualise geographical information, it's not a discipline.

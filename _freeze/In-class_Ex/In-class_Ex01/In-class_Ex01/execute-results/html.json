@@ -1,0 +1,15 @@
+{
+  "hash": "b0c9ec1b69711ebdf2bf9b314cb2e5ed",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"In-class Exercise 1: Geospatial Data Science\"\nauthor: \"Eugene Toh\"\ndate: \"August 19, 2024\"\nexecute:\n  freeze: true\n---\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(\"sf\")\n```\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
