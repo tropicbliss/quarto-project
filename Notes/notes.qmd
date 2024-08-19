@@ -2,7 +2,13 @@
 title: "Notes"
 ---
 
+-   GIS is a software tool to analyse and visualise geographical information, it's not a discipline.
+
+-   Geospatial analysis turns data into information that we can make decisions on.
+
 -   Geospatial data is data stored in a special database that can be thought of as a simplified model of the real world.
+
+-   **What is a dataframe?**
 
 -   Types of geospatial data
 
