@@ -1,6 +1,9 @@
 ---
 title: "Hands-on Exercise 1"
 author: "Eugene Toh"
+date: "August 17, 2024"
+execute:
+  freeze: true
 ---
 
 # Getting Started
