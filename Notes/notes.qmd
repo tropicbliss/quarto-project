@@ -431,3 +431,5 @@ execute:
       round() %>%
       sum()
     ```
+
+-   Learn more from `ggplot2` examples.
