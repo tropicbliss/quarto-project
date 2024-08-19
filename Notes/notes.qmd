@@ -10,7 +10,9 @@ execute:
 
 -   Geospatial data is data stored in a special database that can be thought of as a simplified model of the real world.
 
--   **What is a dataframe?**
+-   What is a data-frame?
+
+    -   A data structure organised as a table where data is organised in rows and columns. Each column typically stores data of a single data type. You can think of it as a spreadsheet or a database table. It can be manipulated via operations like filtering or grouping data.
 
 -   Types of geospatial data
 
@@ -148,6 +150,8 @@ execute:
 
         -   `read_sf`: import a file or database into a SFO (less flexible but more optimised)
 
+        -   Shapefiles can contain many layers, such as elevation that shows different data on the same geography. Each layer can have multiple attributes.
+
         -   Supported file formats
 
             -   Shapefile
@@ -262,6 +266,12 @@ execute:
 
             -   Equivalent to `st_union(st_difference(A, B), st_difference(B, A))`.
 
+    -   Other miscellaneous functions:
+
+        -   `st_area` calculates the area of the geometries of the SFO given to it as a parameter and outputs a data-frame column.
+
+        -   `sum` is an aggregation function that takes in a data-frame column and returns a number.
+
     -   Higher level operations
 
         -   `aggregate`
@@ -346,3 +356,78 @@ execute:
             -   Returns the SFC.
 
         -   `st_is`: checks whether a geometry is of a particular type
+
+-   Other functions
+
+    -   `glimpse`: part of the `dplyr` package
+
+        -   Used to analyse any R object, but especially useful for `tidyverse` data types.
+
+    -   `head`: returns the first few specified rows of a data frame
+
+    -   `st_crs`: getting the coordinate system of a SFO
+
+    -   `st_set_crs`: set the CRS of a SFO
+
+    -   `plot`: plot data using `ggplot2`
+
+    -   `summary`: function that comes with base R that summarises all sorts of data including data-frames. When applied to a data-frame, it gives a statistical summary of each column, including the mean, median, etc.
+
+    -   `top_n`: function that comes with `dplyr` which is used to get the top n values of a column in a data-frame given the attribute name. For example, `top_n(df, 3, score)` gets top 3 items with the highest score. Negate 3 to get the lowest scores. Note that `score` is an identifier, not a string or a variable.
+
+    -   `lengths`: used to get the length of each element of the input. "Length" has a pretty arbitrary meaning, so let's break it down.
+
+        -   Data frame: It will be treated as a list of columns, so the output will be the number of items for each column. It does not get affected by the presence of `NA` values, it will count them regardless.
+
+    -   `mutate`: a function from `dplyr` which is extremely versatile and used to modify existing data-frames by accepting a data-frame as an input and outputting a new modified data-frame without modifying the existing one.
+
+        -   Create new columns:
+
+            ```         
+            # Example data frame
+            df <- data.frame(
+              id = 1:5,
+              height = c(150, 160, 170, 180, 190),  # height in centimeters
+              weight = c(55, 60, 65, 70, 75)        # weight in kilograms
+            )
+
+            # Use mutate to create a new column 'height_in_meters'
+            df <- df %>%
+              mutate(height_in_meters = height / 100)
+            ```
+
+        -   In-place transformation of data:
+
+            ```         
+            mutate(df, height = height / 100)
+            ```
+
+        -   Multiple transformations in a single mutate call:
+
+            ```         
+            mutate(
+                df,
+                bmi = weight / (height_in_meters^2),
+                bmi_category = case_when(
+                  bmi < 18.5 ~ "Underweight",
+                  bmi >= 18.5 & bmi < 24.9 ~ "Normal weight",
+                  bmi >= 25 & bmi < 29.9 ~ "Overweight",
+                  TRUE ~ "Obese"
+                )
+              )
+            ```
+
+-   You can use the indexing operator to get a particular row of a data frame given the column name
+
+-   `buffer_cycling$AREA <- st_area(buffer_cycling)` is equivalent to `buffer_cycling["AREA"] = st_area(buffer_cycling)` in other languages.
+
+-   Backticks are used to allow identifiers which are typically invalid (contain spaces) to be column names, functions, or variables.
+
+-   `%>%` is the piping operator in R, which allows you to compose function chains without nesting functions within each other. It essentially passes the output of the expression on its left-hand side as the first argument to the function on its right-hand side. `sum(round(abs(c(-1.5, 2.3, -3.8, 4.2))))` is functionally equivalent to:
+
+    ```         
+    c(-1.5, 2.3, -3.8, 4.2) %>%
+      abs() %>%
+      round() %>%
+      sum()
+    ```
