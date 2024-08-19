@@ -198,7 +198,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p>GIS is a software tool to analyse and visualise geographical information, it’s not a discipline.</p></li>
 <li><p>Geospatial analysis turns data into information that we can make decisions on.</p></li>
 <li><p>Geospatial data is data stored in a special database that can be thought of as a simplified model of the real world.</p></li>
-<li><p><strong>What is a dataframe?</strong></p></li>
+<li><p>What is a data-frame?</p>
+<ul>
+<li>A data structure organised as a table where data is organised in rows and columns. Each column typically stores data of a single data type. You can think of it as a spreadsheet or a database table. It can be manipulated via operations like filtering or grouping data.</li>
+</ul></li>
 <li><p>Types of geospatial data</p>
 <ul>
 <li><p>Vector</p>
@@ -327,6 +330,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p><code>st_read</code>: import a file or database into a SFO (more flexible but slower)</p>
 <ul>
 <li><p><code>read_sf</code>: import a file or database into a SFO (less flexible but more optimised)</p></li>
+<li><p>Shapefiles can contain many layers, such as elevation that shows different data on the same geography. Each layer can have multiple attributes.</p></li>
 <li><p>Supported file formats</p>
 <ul>
 <li><p>Shapefile</p>
@@ -415,6 +419,11 @@ result &lt;- list(
 <li>Equivalent to <code>st_union(st_difference(A, B), st_difference(B, A))</code>.</li>
 </ul></li>
 </ul></li>
+<li><p>Other miscellaneous functions:</p>
+<ul>
+<li><p><code>st_area</code> calculates the area of the geometries of the SFO given to it as a parameter and outputs a data-frame column.</p></li>
+<li><p><code>sum</code> is an aggregation function that takes in a data-frame column and returns a number.</p></li>
+</ul></li>
 <li><p>Higher level operations</p>
 <ul>
 <li><p><code>aggregate</code></p></li>
@@ -495,6 +504,58 @@ CRS:           NA
 <li><p><code>st_is</code>: checks whether a geometry is of a particular type</p></li>
 </ul></li>
 </ul></li>
+<li><p>Other functions</p>
+<ul>
+<li><p><code>glimpse</code>: part of the <code>dplyr</code> package</p>
+<ul>
+<li>Used to analyse any R object, but especially useful for <code>tidyverse</code> data types.</li>
+</ul></li>
+<li><p><code>head</code>: returns the first few specified rows of a data frame</p></li>
+<li><p><code>st_crs</code>: getting the coordinate system of a SFO</p></li>
+<li><p><code>st_set_crs</code>: set the CRS of a SFO</p></li>
+<li><p><code>plot</code>: plot data using <code>ggplot2</code></p></li>
+<li><p><code>summary</code>: function that comes with base R that summarises all sorts of data including data-frames. When applied to a data-frame, it gives a statistical summary of each column, including the mean, median, etc.</p></li>
+<li><p><code>top_n</code>: function that comes with <code>dplyr</code> which is used to get the top n values of a column in a data-frame given the attribute name. For example, <code>top_n(df, 3, score)</code> gets top 3 items with the highest score. Negate 3 to get the lowest scores. Note that <code>score</code> is an identifier, not a string or a variable.</p></li>
+<li><p><code>lengths</code>: used to get the length of each element of the input. “Length” has a pretty arbitrary meaning, so let’s break it down.</p>
+<ul>
+<li>Data frame: It will be treated as a list of columns, so the output will be the number of items for each column. It does not get affected by the presence of <code>NA</code> values, it will count them regardless.</li>
+</ul></li>
+<li><p><code>mutate</code>: a function from <code>dplyr</code> which is extremely versatile and used to modify existing data-frames by accepting a data-frame as an input and outputting a new modified data-frame without modifying the existing one.</p>
+<ul>
+<li><p>Create new columns:</p>
+<pre><code># Example data frame
+df &lt;- data.frame(
+  id = 1:5,
+  height = c(150, 160, 170, 180, 190),  # height in centimeters
+  weight = c(55, 60, 65, 70, 75)        # weight in kilograms
+)
+
+# Use mutate to create a new column 'height_in_meters'
+df &lt;- df %&gt;%
+  mutate(height_in_meters = height / 100)</code></pre></li>
+<li><p>In-place transformation of data:</p>
+<pre><code>mutate(df, height = height / 100)</code></pre></li>
+<li><p>Multiple transformations in a single mutate call:</p>
+<pre><code>mutate(
+    df,
+    bmi = weight / (height_in_meters^2),
+    bmi_category = case_when(
+      bmi &lt; 18.5 ~ "Underweight",
+      bmi &gt;= 18.5 &amp; bmi &lt; 24.9 ~ "Normal weight",
+      bmi &gt;= 25 &amp; bmi &lt; 29.9 ~ "Overweight",
+      TRUE ~ "Obese"
+    )
+  )</code></pre></li>
+</ul></li>
+</ul></li>
+<li><p>You can use the indexing operator to get a particular row of a data frame given the column name</p></li>
+<li><p><code>buffer_cycling$AREA &lt;- st_area(buffer_cycling)</code> is equivalent to <code>buffer_cycling["AREA"] = st_area(buffer_cycling)</code> in other languages.</p></li>
+<li><p>Backticks are used to allow identifiers which are typically invalid (contain spaces) to be column names, functions, or variables.</p></li>
+<li><p><code>%&gt;%</code> is the piping operator in R, which allows you to compose function chains without nesting functions within each other. It essentially passes the output of the expression on its left-hand side as the first argument to the function on its right-hand side. <code>sum(round(abs(c(-1.5, 2.3, -3.8, 4.2))))</code> is functionally equivalent to:</p>
+<pre><code>c(-1.5, 2.3, -3.8, 4.2) %&gt;%
+  abs() %&gt;%
+  round() %&gt;%
+  sum()</code></pre></li>
 </ul>
 
 
