@@ -284,12 +284,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><p>Examples</p>
 <ul>
-<li>SVY21 (Singapore)</li>
+<li>SVY21 (Singapore) (EPSG code: 3414)</li>
 </ul></li>
 <li><p>Provides consistent area measurements.</p></li>
 <li><p>Important to convert from GCS to PCS before conducting analysis.</p></li>
 <li><p>Large countries might use multiple PCS.</p></li>
 <li><p>Each country or state might have their own PCS to minimise distortions from projecting a spherical surface into a plane, to create an accurate representation of an area.</p></li>
+<li><p>Make sure to convert to this form before doing any analysis.</p></li>
 </ul></li>
 </ul></li>
 </ul></li>
@@ -361,8 +362,8 @@ st_write(st_poly, "data/my_poly.shp")</code></pre></li>
 </ul></li>
 <li><p><code>st_intersects</code>: whether two geometries touch or overlap each other</p>
 <ul>
-<li><p>Note that many <code>sf</code> functions may sound similar to each other but perform totally different tasks. For instance, <code>st_intersects</code> merely tells you which geometry intersects with each other while <code>st_intersection</code> will create new geometry that shows the areas of intersection.</p></li>
-<li><p>In short, <code>st_intersects</code> checks whether each geometry in each SFO intersects with each other. Many other functions in this category work the same way. Like many other functions in this category, it returns a sparse list.</p></li>
+<li><p>Note that many <code>sf</code> functions may sound similar to each other but perform totally different tasks. For instance, <code>st_intersects</code> checks whether each geometry in each SFO intersects with each other while <code>st_intersection</code> will create new geometry that shows the areas of intersection.</p></li>
+<li><p>Many other functions in this category work the same way, and they all typically return a sparse list.</p></li>
 <li><p>Sparse lists</p>
 <ul>
 <li><p>A sparse list is a way of efficiently representing the relationship of a geometry in one set with respect to another geometry in another set without using a full matrix.</p></li>
@@ -421,7 +422,11 @@ result &lt;- list(
 </ul></li>
 <li><p>Other miscellaneous functions:</p>
 <ul>
-<li><p><code>st_area</code> calculates the area of the geometries of the SFO given to it as a parameter and outputs a data-frame column.</p></li>
+<li><p><code>st_area</code> calculates the area of the geometries of the SFO given to it as a parameter and outputs a data-frame column.</p>
+<ul>
+<li><p>For example, to calculate the area of each geometry, you can do:</p>
+<pre><code>sfo$Area &lt;- sfo %&gt;% st_area()</code></pre></li>
+</ul></li>
 <li><p><code>sum</code> is an aggregation function that takes in a data-frame column and returns a number.</p></li>
 </ul></li>
 <li><p>Higher level operations</p>
@@ -448,12 +453,12 @@ result &lt;- list(
 </div>
 <p>Observe that <code>st_join</code> does not do any interpolation or any mathematical operations. It also does not include any points in <code>b</code>. Any repeating data from the merge is included in the final output as an additional row.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>))))</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>b <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">11</span><span class="sc">:</span><span class="dv">15</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">10</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">12</span>,<span class="dv">12</span>))))</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">st_join</span>(a, b)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>))))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>b <span class="ot">=</span> <span class="fu">st_sf</span>(<span class="at">a =</span> <span class="dv">11</span><span class="sc">:</span><span class="dv">15</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a> <span class="at">geom =</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">10</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>)), <span class="fu">st_point</span>(<span class="fu">c</span>(<span class="dv">12</span>,<span class="dv">12</span>))))</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">st_join</span>(a, b)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Simple feature collection with 4 features and 2 fields
 Geometry type: POINT
@@ -485,10 +490,12 @@ CRS:           NA
 <li><p><code>st_split</code>: split a polygon given line boundary</p></li>
 <li><p><code>st_buffer</code>: compute a buffer around this geometry/each geometry</p>
 <ul>
+<li><p>Takes an SFO as input.</p></li>
 <li><p>Creates a region that expands outwards from each geometry by a given distance, creating a buffer zone.</p></li>
 <li><p>For points, it creates a circular buffer. For lines, it creates a buffer along the entire length of the line, creating a polygon that surrounds the line. For polygons, it expands the polygon by a given distance, keeping it’s shape, resulting in a scaled up version of the original polygon.</p></li>
 <li><p>Returns a SFC containing only the buffer.</p></li>
 <li><p>Uses the unit of measurement specified by the PCS, e.g., SVY21 (Singapore) uses metres as the unit of measurement.</p></li>
+<li><p><code>nQuadSegs</code> determine the smoothness of the circular arcs that make up the buffer. The more the number of quad segments the smoother the curve. It’s typically sufficient to leave this as the default.</p></li>
 </ul></li>
 <li><p><code>st_make_valid</code>: tries to make an invalid geometry valid (requires <code>lwgeom</code>)</p></li>
 <li><p><code>st_boundary</code>: returns the boundary of a geometry</p></li>
@@ -512,9 +519,15 @@ CRS:           NA
 </ul></li>
 <li><p><code>head</code>: returns the first few specified rows of a data frame</p></li>
 <li><p><code>st_crs</code>: getting the coordinate system of a SFO</p></li>
-<li><p><code>st_set_crs</code>: set the CRS of a SFO</p></li>
+<li><p><code>st_set_crs</code>: set the CRS of a SFO</p>
+<ul>
+<li><p>When to use <code>st_transform</code> vs.&nbsp;<code>st_set_crs</code>?</p>
+<ul>
+<li>Use <code>st_set_crs</code> when the data lack a CRS or has an incorrect CRS and you want to correct it. It does not change the underlying geometry data in any way, and only changes the representation of it. <code>st_transform</code> assumes that the previous SFO has a valid CRS value. Use <code>st_crs</code> to check the CRS value if you are unsure.</li>
+</ul></li>
+</ul></li>
 <li><p><code>plot</code>: plot data using <code>ggplot2</code></p></li>
-<li><p><code>summary</code>: function that comes with base R that summarises all sorts of data including data-frames. When applied to a data-frame, it gives a statistical summary of each column, including the mean, median, etc.</p></li>
+<li><p><code>summary</code>: function that comes with base R that summarises all sorts of data including data-frames. When applied to a data-frame, it gives a statistical summary of each column, including the mean, median, etc. However, you typically apply it to a column of a data-frame.</p></li>
 <li><p><code>top_n</code>: function that comes with <code>dplyr</code> which is used to get the top n values of a column in a data-frame given the attribute name. For example, <code>top_n(df, 3, score)</code> gets top 3 items with the highest score. Negate 3 to get the lowest scores. Note that <code>score</code> is an identifier, not a string or a variable.</p></li>
 <li><p><code>lengths</code>: used to get the length of each element of the input. “Length” has a pretty arbitrary meaning, so let’s break it down.</p>
 <ul>
@@ -556,7 +569,11 @@ df &lt;- df %&gt;%
   abs() %&gt;%
   round() %&gt;%
   sum()</code></pre></li>
-<li><p>Learn more from <code>ggplot2</code> examples.</p></li>
+<li><p>Learn more from <code>ggplot2</code> examples.</p>
+<ul>
+<li><code>plot</code> should be treated as a multi-tool that should be able to plot all sorts of data types.</li>
+</ul></li>
+<li><p>Use the “environment” tab in RStudio to visualise your data-frames.</p></li>
 </ul>
 
 
