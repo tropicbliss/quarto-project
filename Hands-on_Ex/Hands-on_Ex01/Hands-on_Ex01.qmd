@@ -23,104 +23,149 @@ pacman::p_load(sf, tidyverse)
 ```{r}
 mpsz = st_read(dsn = "data/geospatial/Master_Plan_2014_Subzone", layer = "MP14_SUBZONE_WEB_PL")
 ```
+
 ### Cycling Path 2014 (Shapefile)
+
 ```{r}
 cyclingpath = st_read("data/geospatial/Cycling_Path_2014", layer = "CyclingPathGazette")
 ```
+
 ### Pre-school Locations (KML)
+
 ```{r}
 preschool = st_read("data/geospatial/PreSchool_Location/PreSchoolsLocation.kml")
 ```
+
 # Analysing the data
+
 ### Extract geometry of a simple features object
-`mpsz` is a data frame-like like object where one of the columns contains geometric data. `st_geometry` returns a list of geometries. 
+
+`mpsz` is a data frame-like like object where one of the columns contains geometric data. `st_geometry` returns a list of geometries.
+
 ```{r}
 st_geometry(mpsz)
 ```
+
 ### Extract attribute information of a simple features object
+
 ```{r}
 glimpse(mpsz)
 ```
+
 ### Return the first few rows of a data frame
+
 ```{r}
 head(mpsz, n=5)
 ```
+
 ### Getting the coordinate system of the feature object
+
 ```{r}
 st_crs(mpsz)
 ```
+
 ## Adjusting the data
+
 ### Adjusting the EPSG code
+
 ```{r}
 mpsz3414 <- st_set_crs(mpsz, 3414)
 ```
+
 ```{r}
 st_crs(mpsz3414)
 ```
+
 ### Transforming the coordinate system
+
 ```{r}
 preschool3414 <- st_transform(preschool, crs = 3414)
 ```
+
 ```{r}
 st_crs(preschool3414)
 ```
+
 ## Plotting the data
+
 ```{r}
 plot(mpsz)
 ```
+
 ### Plotting a single attribute
+
 ```{r}
 plot(mpsz["PLN_AREA_N"])
 ```
+
 ## Working with Aspatial data
+
 Aspatial data is data that is not geospatial in nature but contains fields that capture the x- and y-coordinates of the data points.
 
 ### Importing the data
+
 ```{r}
 listings <- read_csv("data/aspatial/SG_Airbnb_Listing_Data/listings.csv")
 ```
+
 ### Reading the data
+
 ```{r}
 list(listings)
 ```
+
 #### Extracting the coordinates of each listing from the csv file and converting it into a data frame
+
 ```{r}
 listings_sf <- st_as_sf(listings, coords = c("longitude", "latitude"), crs=4326) %>% st_transform(crs=3414)
 ```
-Note that `%>%` is the pipe operator in R.
-`EPSG: 4326` is `wgs84` and `EPSG: 3414` is Singapore SVY21 Projected Coordinate System. Refer to [the EPSG website](https://epsg.io) for details.
+
+Note that `%>%` is the pipe operator in R. `EPSG: 4326` is `wgs84` and `EPSG: 3414` is Singapore SVY21 Projected Coordinate System. Refer to [the EPSG website](https://epsg.io) for details.
 
 ### Listing each row of the csv file
+
 ```{r}
 glimpse(listings_sf)
 ```
+
 # Geoprocessing
+
 ## Buffering
+
 Getting the total area of land required for widening the existing cycling path by 5 metres:
+
 ```{r}
 buffer_cycling <- st_buffer(cyclingpath, dist=5, nQuadSegs=30)
 buffer_cycling$AREA <- st_area(buffer_cycling)
 sum(buffer_cycling$AREA)
 ```
+
 ## Point-in-polygon count
-Getting the number of pre-schools in each planning sub-zone.
-`st_intersects` merge both the sub-zone and the pre-school data, while `lengths` does the counting.
+
+Getting the number of pre-schools in each planning sub-zone. `st_intersects` merge both the sub-zone and the pre-school data, while `lengths` does the counting.
+
 ```{r}
 mpsz3414$`PreSch Count` <- lengths(st_intersects(mpsz3414, preschool3414))
 summary(mpsz3414$`PreSch Count`)
 glimpse(mpsz3414)
 ```
+
 Getting the districts with the most number of pre-schools.
+
 ```{r}
 top_n(mpsz3414, 1, `PreSch Count`)
 ```
+
 Calculate the density of pre-schools of each district.
+
 ```{r}
 mpsz3414$Area <- mpsz3414 %>% st_area()
 mpsz3414 <- mpsz3414 %>% mutate(`PreSch Density` = `PreSch Count` / Area * 1000000)
 glimpse(mpsz3414)
 ```
+
 # Plotting with ggplot2
+
 ```{r}
 hist(mpsz3414$`PreSch Density`)
 ggplot(data=mpsz3414, 
