@@ -2,12 +2,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.5.56">
+<meta name="generator" content="quarto-1.4.555">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Notes – IS415-GAA</title>
+<title>IS415-GAA - Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -33,7 +33,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -117,13 +117,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </a>
   </div>
             <div id="quarto-search" class="" title="Search"></div>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
   <span class="navbar-toggler-icon"></span>
 </button>
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-hands-on-exercise" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-hands-on-exercise" role="button" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Hands-on Exercise</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-hands-on-exercise">    
@@ -134,7 +134,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </ul>
   </li>
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-in-class-exercise" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-in-class-exercise" role="button" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">In-class Exercise</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-in-class-exercise">    
@@ -160,7 +160,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>  
 </ul>
           </div> <!-- /navcollapse -->
-            <div class="quarto-navbar-tools">
+          <div class="quarto-navbar-tools">
 </div>
       </div> <!-- /container-fluid -->
     </nav>
@@ -169,7 +169,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
     </div>
 <!-- main -->
@@ -574,6 +574,136 @@ df &lt;- df %&gt;%
 <li><code>plot</code> should be treated as a multi-tool that should be able to plot all sorts of data types.</li>
 </ul></li>
 <li><p>Use the “environment” tab in RStudio to visualise your data-frames.</p></li>
+<li><p>Choropleth maps</p>
+<ul>
+<li><p>Used to represent geographical areas.</p></li>
+<li><p>Using lines to segment off areas and colours to shade areas depending on its attribute value.</p></li>
+<li><p>Types</p>
+<ul>
+<li><p>Classified</p>
+<ul>
+<li><p>Segments values into range intervals. The intervals are also known as bins.</p></li>
+<li><p>It does not have to be numerical values, it could be categorical too (political parties).</p></li>
+<li><p>How many colours to use?</p>
+<ul>
+<li><p>Try to stay within 8 colours.</p></li>
+<li><p>The generality of the data (the more general it is, the less colour shades you need).</p></li>
+</ul></li>
+<li><p>Classification methods (<code>tmap</code> supports all of them)</p>
+<ul>
+<li><p>Quantile</p>
+<ul>
+<li>The number of districts for each value range is kept the same.</li>
+</ul></li>
+<li><p>Equal interval</p>
+<ul>
+<li><p>The range between each segment is the same.</p></li>
+<li><p>Avoid this when the data is highly skewed.</p></li>
+</ul></li>
+<li><p>Jenk’s method</p>
+<ul>
+<li>A combination of quartile and equal interval methods.</li>
+</ul></li>
+<li><p>Standard deviation</p>
+<ul>
+<li><p>Only useful if your data follows a normal distribution.</p></li>
+<li><p>Instead of mapping based on actual values, you map based on their z-scores.</p></li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><p>Unclassified</p>
+<ul>
+<li>There are no fixed segmentation for colours. Instead colour values are continous and there is only one interval from the smallest value to the largest value.</li>
+</ul></li>
+</ul></li>
+<li><p>What colours to use?</p>
+<ul>
+<li><p>Use ColorBrewer which is an application to help choose your colour scheme based on your data.</p></li>
+<li><p>Colour schemes used:</p>
+<ul>
+<li><p>Nominal</p>
+<ul>
+<li>Categorical data</li>
+</ul></li>
+<li><p>Sequential</p>
+<ul>
+<li>Either all positive or negative numbers.</li>
+</ul></li>
+<li><p>Diverging</p>
+<ul>
+<li>Use when the data does not fit the above scenarios.</li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><p>Both types of choropleth maps require you to state the minimum and maximum value and how the colours vary across the spectrum in the legend.</p></li>
+<li><p>Using <code>tmap</code>:</p>
+<ul>
+<li><p><code>tmap</code> is a thematic mapping package for R.</p></li>
+<li><p>Includes an R implementation of ColorBrewer.</p></li>
+<li><p>It is compatible with the <code>sf</code> package.</p></li>
+<li><p>Under <code>tmap</code>, simple features can be further grouped into spatial and raster types.</p></li>
+<li><p>Simple features that contains attributes:</p>
+<ul>
+<li><p>Classes that start with “Spatial” and include the phrase “DataFrame”.</p></li>
+<li><p>Classes that start with “Raster”.</p></li>
+</ul></li>
+<li><p>Simple features with no attributes:</p>
+<ul>
+<li>The rest.</li>
+</ul></li>
+<li><p>Like the <code>plot</code> function in the <code>ggplot2</code> package, we can use the function <code>qtm</code> to quickly plot out our choropleth map.</p></li>
+<li><p>The map can also be interactive if needed using the function <code>tmap_mode</code>.</p></li>
+<li><p><code>tmap_shape</code>: specifies the shape object</p>
+<ul>
+<li><p>Takes a Shapefile or a SFO as input.</p></li>
+<li><p>Also includes a bounding box input to control the zoom level of the map.</p></li>
+</ul></li>
+<li><p><code>tm_polygons</code>: draw polygons</p>
+<ul>
+<li>A wrapper of <code>tm_fill</code> and <code>tm_border</code>.</li>
+</ul></li>
+<li><p><code>tm_symbols</code>: draw symbols</p></li>
+<li><p><code>tm_lines</code>: draw polylines</p></li>
+<li><p><code>tm_raster</code>: draw a raster</p></li>
+<li><p><code>tm_text</code>: add text labels</p></li>
+<li><p>Layers (note that you must call <code>tm_shape</code> first to create the shapes before you can manipulate the shapes with <code>tm_fill</code>, etc.) (use these functions if you want more flexibility for customisation)</p>
+<ul>
+<li><p><code>tm_fill</code>: fills the polygons</p>
+<pre><code>tm_fill(col=color)</code></pre></li>
+<li><p><code>tm_borders</code>: draws polygon borders</p>
+<ul>
+<li><p><code>lwd</code>: border line width (default: <code>1</code>)</p></li>
+<li><p><code>alpha</code>: transparency number between 0 (totally transparent) and 1 (totally opaque) (default: <code>1</code>)</p></li>
+<li><p><code>col</code>: border colour</p></li>
+<li><p><code>lty</code>: border line type (default: <code>"solid"</code>)</p></li>
+</ul></li>
+<li><p><code>tm_bubbles</code>: draws bubbles</p></li>
+<li><p><code>tm_squares</code>: draws squares</p></li>
+<li><p><code>tm_dots</code>: draws dots</p></li>
+<li><p><code>tm_markers</code>: draws markers</p></li>
+<li><p><code>tm_iso</code>: draw iso/contour lines</p></li>
+</ul></li>
+<li><p>Furniture</p>
+<ul>
+<li><p><code>tm_compass</code>: draws a compass</p></li>
+<li><p><code>tm_scale_bar</code>: draws a geographic scale bar</p></li>
+<li><p><code>tm_grid</code>: draws a map grid</p></li>
+</ul></li>
+<li><p>Ways to create multiple small Choropleth maps (facet maps)</p>
+<ul>
+<li><p>assigning multiple values to at least one of the aesthetic arguments</p>
+<ul>
+<li>defining <code>ncols</code> in <code>tm_fill</code></li>
+</ul></li>
+<li><p><code>tm_facets</code> group-by variable</p>
+<ul>
+<li>generate two different outputs</li>
+</ul></li>
+<li><p>multiple standalone maps using <code>tmap_arrange</code></p></li>
+</ul></li>
+<li><p>You can use the selection function to only choose certain geographical areas you want to map out.</p></li>
+</ul></li>
+</ul></li>
 </ul>
 
 
@@ -614,7 +744,18 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }
     return false;
   }
-  const onCopySuccess = function(e) {
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
     // button target
     const button = e.trigger;
     // don't keep focus
@@ -646,29 +787,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }, 1000);
     // clear code selection
     e.clearSelection();
-  }
-  const getTextToCopy = function(trigger) {
-      const codeEl = trigger.previousElementSibling.cloneNode(true);
-      for (const childEl of codeEl.children) {
-        if (isCodeAnnotation(childEl)) {
-          childEl.remove();
-        }
-      }
-      return codeEl.innerText;
-  }
-  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
-    text: getTextToCopy
   });
-  clipboard.on('success', onCopySuccess);
-  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
-    // For code content inside modals, clipBoardJS needs to be initialized with a container option
-    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
-    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
-      text: getTextToCopy,
-      container: window.document.getElementById('quarto-embedded-source-code-modal')
-    });
-    clipboardModal.on('success', onCopySuccess);
-  }
     var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
     var mailtoRegex = new RegExp(/^mailto:/);
       var filterRegex = new RegExp('/' + window.location.host + '/');
@@ -676,7 +795,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
         return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
     }
     // Inspect non-navigation links and adorn them if external
- 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
     for (var i=0; i<links.length; i++) {
       const link = links[i];
       if (!isInternal(link.href)) {

@@ -453,3 +453,161 @@ execute:
     -   `plot` should be treated as a multi-tool that should be able to plot all sorts of data types.
 
 -   Use the "environment" tab in RStudio to visualise your data-frames.
+
+-   Choropleth maps
+
+    -   Used to represent geographical areas.
+
+    -   Using lines to segment off areas and colours to shade areas depending on its attribute value.
+
+    -   Types
+
+        -   Classified
+
+            -   Segments values into range intervals. The intervals are also known as bins.
+
+            -   It does not have to be numerical values, it could be categorical too (political parties).
+
+            -   How many colours to use?
+
+                -   Try to stay within 8 colours.
+
+                -   The generality of the data (the more general it is, the less colour shades you need).
+
+            -   Classification methods (`tmap` supports all of them)
+
+                -   Quantile
+
+                    -   The number of districts for each value range is kept the same.
+
+                -   Equal interval
+
+                    -   The range between each segment is the same.
+
+                    -   Avoid this when the data is highly skewed.
+
+                -   Jenk's method
+
+                    -   A combination of quartile and equal interval methods.
+
+                -   Standard deviation
+
+                    -   Only useful if your data follows a normal distribution.
+
+                    -   Instead of mapping based on actual values, you map based on their z-scores.
+
+        -   Unclassified
+
+            -   There are no fixed segmentation for colours. Instead colour values are continous and there is only one interval from the smallest value to the largest value.
+
+    -   What colours to use?
+
+        -   Use ColorBrewer which is an application to help choose your colour scheme based on your data.
+
+        -   Colour schemes used:
+
+            -   Nominal
+
+                -   Categorical data
+
+            -   Sequential
+
+                -   Either all positive or negative numbers.
+
+            -   Diverging
+
+                -   Use when the data does not fit the above scenarios.
+
+    -   Both types of choropleth maps require you to state the minimum and maximum value and how the colours vary across the spectrum in the legend.
+
+    -   Using `tmap`:
+
+        -   `tmap` is a thematic mapping package for R.
+
+        -   Includes an R implementation of ColorBrewer.
+
+        -   It is compatible with the `sf` package.
+
+        -   Under `tmap`, simple features can be further grouped into spatial and raster types.
+
+        -   Simple features that contains attributes:
+
+            -   Classes that start with "Spatial" and include the phrase "DataFrame".
+
+            -   Classes that start with "Raster".
+
+        -   Simple features with no attributes:
+
+            -   The rest.
+
+        -   Like the `plot` function in the `ggplot2` package, we can use the function `qtm` to quickly plot out our choropleth map.
+
+        -   The map can also be interactive if needed using the function `tmap_mode`.
+
+        -   `tmap_shape`: specifies the shape object
+
+            -   Takes a Shapefile or a SFO as input.
+
+            -   Also includes a bounding box input to control the zoom level of the map.
+
+        -   `tm_polygons`: draw polygons
+
+            -   A wrapper of `tm_fill` and `tm_border`.
+
+        -   `tm_symbols`: draw symbols
+
+        -   `tm_lines`: draw polylines
+
+        -   `tm_raster`: draw a raster
+
+        -   `tm_text`: add text labels
+
+        -   Layers (note that you must call `tm_shape` first to create the shapes before you can manipulate the shapes with `tm_fill`, etc.) (use these functions if you want more flexibility for customisation)
+
+            -   `tm_fill`: fills the polygons
+
+                ```         
+                tm_fill(col=color)
+                ```
+
+            -   `tm_borders`: draws polygon borders
+
+                -   `lwd`: border line width (default: `1`)
+
+                -   `alpha`: transparency number between 0 (totally transparent) and 1 (totally opaque) (default: `1`)
+
+                -   `col`: border colour
+
+                -   `lty`: border line type (default: `"solid"`)
+
+            -   `tm_bubbles`: draws bubbles
+
+            -   `tm_squares`: draws squares
+
+            -   `tm_dots`: draws dots
+
+            -   `tm_markers`: draws markers
+
+            -   `tm_iso`: draw iso/contour lines
+
+        -   Furniture
+
+            -   `tm_compass`: draws a compass
+
+            -   `tm_scale_bar`: draws a geographic scale bar
+
+            -   `tm_grid`: draws a map grid
+
+        -   Ways to create multiple small Choropleth maps (facet maps)
+
+            -   assigning multiple values to at least one of the aesthetic arguments
+
+                -   defining `ncols` in `tm_fill`
+
+            -   `tm_facets` group-by variable
+
+                -   generate two different outputs
+
+            -   multiple standalone maps using `tmap_arrange`
+
+        -   You can use the selection function to only choose certain geographical areas you want to map out.

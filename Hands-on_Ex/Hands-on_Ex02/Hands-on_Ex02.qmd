@@ -1,0 +1,9 @@
+---
+title: "Hands-on Exercise 2"
+author: "Eugene Toh"
+date: "August 17, 2024"
+execute:
+  freeze: true
+---
+
+# Thematic Mapping and GeoVisualisation with R
