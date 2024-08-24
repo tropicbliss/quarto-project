@@ -395,45 +395,20 @@ execute:
 
         -   Data frame: It will be treated as a list of columns, so the output will be the number of items for each column. It does not get affected by the presence of `NA` values, it will count them regardless.
 
-    -   `mutate`: a function from `dplyr` which is extremely versatile and used to modify existing data-frames by accepting a data-frame as an input and outputting a new modified data-frame without modifying the existing one.
+    -   `st_join`: joins two data-frames together
 
-        -   Create new columns:
-
-            ```         
-            # Example data frame
-            df <- data.frame(
-              id = 1:5,
-              height = c(150, 160, 170, 180, 190),  # height in centimeters
-              weight = c(55, 60, 65, 70, 75)        # weight in kilograms
-            )
-
-            # Use mutate to create a new column 'height_in_meters'
-            df <- df %>%
-              mutate(height_in_meters = height / 100)
-            ```
-
-        -   In-place transformation of data:
+        -   The difference between this and `st_join` is that the latter is only designed to be used with spatial data while this works with any data-frame.
 
             ```         
-            mutate(df, height = height / 100)
+            mpsz_pop2020 <- left_join(mpsz, popdata2020,
+                                      by = c("SUBZONE_N" = "SZ"))
             ```
 
-        -   Multiple transformations in a single mutate call:
+    -   `write_rds`: save an R object to a file
 
-            ```         
-            mutate(
-                df,
-                bmi = weight / (height_in_meters^2),
-                bmi_category = case_when(
-                  bmi < 18.5 ~ "Underweight",
-                  bmi >= 18.5 & bmi < 24.9 ~ "Normal weight",
-                  bmi >= 25 & bmi < 29.9 ~ "Overweight",
-                  TRUE ~ "Obese"
-                )
-              )
-            ```
+        -   Similar to `pickle` in Python.
 
--   You can use the indexing operator to get a particular row of a data frame given the column name
+-   You can use the indexing operator to get a particular row of a data frame given the column name.
 
 -   `buffer_cycling$AREA <- st_area(buffer_cycling)` is equivalent to `buffer_cycling["AREA"] = st_area(buffer_cycling)` in other languages.
 
@@ -600,14 +575,285 @@ execute:
 
         -   Ways to create multiple small Choropleth maps (facet maps)
 
-            -   assigning multiple values to at least one of the aesthetic arguments
+            -   assigning multiple values to at least one of the aesthetic arguments (useful for showing multiple attributes given the same geographical area)
 
                 -   defining `ncols` in `tm_fill`
 
-            -   `tm_facets` group-by variable
+                    ```         
+                    tm_shape(mpsz_pop2020)+
+                      tm_fill(c("YOUNG", "AGED"),
+                              style = "equal", 
+                              palette = "Blues") +
+                      tm_layout(legend.position = c("right", "bottom")) +
+                      tm_borders(alpha = 0.5) +
+                      tmap_style("white")
+                    ```
 
-                -   generate two different outputs
+            -   assigning multiple values to at least one of the aesthetic arguments (useful for showing multiple attributes given the same geographical area)
 
-            -   multiple standalone maps using `tmap_arrange`
+                ```         
+                tm_shape(mpsz_pop2020)+ 
+                  tm_polygons(c("DEPENDENCY","AGED"),
+                          style = c("equal", "quantile"), 
+                          palette = list("Blues","Greens")) +
+                  tm_layout(legend.position = c("right", "bottom"))
+                ```
+
+            -   `tm_facets` group-by variable (useful for showing multiple geographical areas given the same attribute)
+
+                ```         
+                tm_shape(mpsz_pop2020) +
+                  tm_fill("DEPENDENCY",
+                          style = "quantile",
+                          palette = "Blues",
+                          thres.poly = 0) + 
+                  tm_facets(by="REGION_N", 
+                            free.coords=TRUE, 
+                            drop.shapes=TRUE) +
+                  tm_layout(legend.show = FALSE,
+                            title.position = c("center", "center"), 
+                            title.size = 20) +
+                  tm_borders(alpha = 0.5)
+                ```
+
+                This groups by `"REGION_N"`.
+
+            -   multiple standalone maps using `tmap_arrange` (useful for showing multiple attributes given the same geographical area)
+
+                ```         
+                youngmap <- tm_shape(mpsz_pop2020)+ 
+                  tm_polygons("YOUNG", 
+                              style = "quantile", 
+                              palette = "Blues")
+
+                agedmap <- tm_shape(mpsz_pop2020)+ 
+                  tm_polygons("AGED", 
+                              style = "quantile", 
+                              palette = "Blues")
+
+                tmap_arrange(youngmap, agedmap, asp=1, ncol=2)
+                ```
 
         -   You can use the selection function to only choose certain geographical areas you want to map out.
+
+            ```         
+            tm_shape(mpsz_pop2020[mpsz_pop2020$REGION_N=="CENTRAL REGION", ])+
+              tm_fill("DEPENDENCY", 
+                      style = "quantile", 
+                      palette = "Blues", 
+                      legend.hist = TRUE, 
+                      legend.is.portrait = TRUE,
+                      legend.hist.z = 0.1) +
+              tm_layout(legend.outside = TRUE,
+                        legend.height = 0.45, 
+                        legend.width = 5.0,
+                        legend.position = c("right", "bottom"),
+                        frame = FALSE) +
+              tm_borders(alpha = 0.5)
+            ```
+
+-   Iterating over data-frame rows for data wrangling
+
+    -   `filter`: filter rows by predicate
+
+        ```         
+        popdata %>% filter(Time == 2020)
+        ```
+
+    -   `group_by`: group by columns
+
+        -   It groups elements by the first field, and then subsequent fields.
+
+        -   It does not do any data aggregating.
+
+        -   Specifies a scope whereby subsequent queries apply to each group separately. If you no longer want operations to apply for each group but each row, use the `ungroup` function as a pipe operation.
+
+            ```         
+            popdata %>% group_by(PA, SZ, AG)
+            ```
+
+    -   `summarise`: aggregates rows of data
+
+        -   Typically used in conjunction with `group_by` which aggregates data based on the last field specified by `group_by`.
+
+            ```         
+            popdata %>% group_by(PA, SZ, AG) %>%
+            summarise(`POP` = sum(`Pop`))
+            ```
+
+    -   `mutate`: a function from `dplyr` which is extremely versatile and used to modify existing data-frames by accepting a data-frame as an input and outputting a new modified data-frame without modifying the existing one.
+
+        -   Create new columns:
+
+            ```         
+            # Example data frame
+            df <- data.frame(
+              id = 1:5,
+              height = c(150, 160, 170, 180, 190),  # height in centimeters
+              weight = c(55, 60, 65, 70, 75)        # weight in kilograms
+            )
+
+            # Use mutate to create a new column 'height_in_meters'
+            df <- df %>%
+              mutate(height_in_meters = height / 100)
+            ```
+
+        -   In-place transformation of data:
+
+            ```         
+            mutate(df, height = height / 100)
+            ```
+
+        -   Multiple transformations in a single mutate call:
+
+            ```         
+            mutate(
+                df,
+                bmi = weight / (height_in_meters^2),
+                bmi_category = case_when(
+                  bmi < 18.5 ~ "Underweight",
+                  bmi >= 18.5 & bmi < 24.9 ~ "Normal weight",
+                  bmi >= 25 & bmi < 29.9 ~ "Overweight",
+                  TRUE ~ "Obese"
+                )
+              )
+            ```
+
+        -   `rowSums`: sums up columns in each row
+
+            ```         
+            popdata %>% mutate(A = rowSums(.[7:11]) + rowSums(.[13:15]))
+            ```
+
+            Remember that ranges in R are inclusive.
+
+    -   `pivot_wider`: make each unique row be a column
+
+        -   Let's say a column known as "AG" contain the values `"a"` and `"b"`, each one only occurring once. There is also another column named "POP" filled with numbers. This function creates columns "a" and "b" and applies the "POP" value as the value for its respective cells.
+
+    -   `select`: only include specific fields
+
+        -   Similar to the concept of selecting in SQL.
+
+            ```         
+            popdata %>% select(field1, field2)
+            ```
+
+    -   `mutate_at`: applies multiple function operations to multiple columns
+
+        ```         
+        popdata2020 %>%
+          mutate_at(.vars = vars(PA, SZ), 
+                  .funs = list(toupper))
+        ```
+
+        Mutate columns "PA" and "SZ" by converting them to uppercase. You can apply multiple different kinds of operations but we are only using one.
+
+-   Making Choropleth maps
+
+    -   Easiest way
+
+        ```         
+        tmap_mode("plot")
+        qtm(mpsz_pop2020, 
+            fill = "DEPENDENCY")
+        ```
+
+        -   Harder way (more customisable)
+
+            ```         
+            tm_shape(mpsz_pop2020)+
+              tm_fill("DEPENDENCY", 
+                      style = "quantile", 
+                      palette = "Blues",
+                      title = "Dependency ratio") +
+              tm_layout(main.title = "Distribution of Dependency Ratio by planning subzone",
+                        main.title.position = "center",
+                        main.title.size = 1.2,
+                        legend.height = 0.45, 
+                        legend.width = 0.35,
+                        frame = TRUE) +
+              tm_borders(alpha = 0.5) +
+              tm_compass(type="8star", size = 2) +
+              tm_scale_bar() +
+              tm_grid(alpha =0.2) +
+              tm_credits("Source: Planning Sub-zone boundary from Urban Redevelopment Authorithy (URA)\n and Population data from Department of Statistics DOS", 
+                         position = c("left", "bottom"))
+            ```
+
+            The `style` argument specifies the classification method to be used. Here is a list of them:
+
+            -   `quantile`
+
+            -   `equal` (make sure the data is not skewed)
+
+            -   `jenks`
+
+            You can also manually specify the breakpoints:
+
+            ```         
+            tm_shape(mpsz_pop2020)+
+              tm_fill("DEPENDENCY",
+                      breaks = c(0, 0.60, 0.70, 0.80, 0.90, 1.00)) +
+              tm_borders(alpha = 0.5)
+            ```
+
+            The `palette` argument specifies the fill colour scheme to be used. Using a `-` sign before the colour scheme makes the smaller values be represented with darker colour than the greater values, e.g. `"-Greens"`.
+
+            Besides colour, you can also specify the style of the map with `tmap_style` which affects aspects such as the background colour of the map and the font, etc. This is independent of what colour each polygon is filled with.
+
+            ```         
+            tm_shape(mpsz_pop2020)+
+              tm_fill("DEPENDENCY", 
+                      style = "quantile", 
+                      palette = "-Greens") +
+              tm_borders(alpha = 0.5) +
+              tmap_style("classic")
+            ```
+
+            The default style is `"white"`.
+
+-   Adding additional map complications
+
+    -   Histogram
+
+        ```         
+        tm_shape(mpsz_pop2020)+
+          tm_fill("DEPENDENCY", 
+                  style = "jenks", 
+                  palette = "Blues", 
+                  legend.hist = TRUE, 
+                  legend.is.portrait = TRUE,
+                  legend.hist.z = 0.1) +
+          tm_layout(main.title = "Distribution of Dependency Ratio by planning subzone \n(Jenks classification)",
+                    main.title.position = "center",
+                    main.title.size = 1,
+                    legend.height = 0.45, 
+                    legend.width = 0.35,
+                    legend.outside = FALSE,
+                    legend.position = c("right", "bottom"),
+                    frame = FALSE) +
+          tm_borders(alpha = 0.5)
+        ```
+
+    -   Compass, scale bar, and grid lines
+
+        ```         
+        tm_shape(mpsz_pop2020)+
+          tm_fill("DEPENDENCY", 
+                  style = "quantile", 
+                  palette = "Blues",
+                  title = "No. of persons") +
+          tm_layout(main.title = "Distribution of Dependency Ratio \nby planning subzone",
+                    main.title.position = "center",
+                    main.title.size = 1.2,
+                    legend.height = 0.45, 
+                    legend.width = 0.35,
+                    frame = TRUE) +
+          tm_borders(alpha = 0.5) +
+          tm_compass(type="8star", size = 2) +
+          tm_scale_bar(width = 0.15) +
+          tm_grid(lwd = 0.1, alpha = 0.2) +
+          tm_credits("Source: Planning Sub-zone boundary from Urban Redevelopment Authorithy (URA)\n and Population data from Department of Statistics DOS", 
+                     position = c("left", "bottom"))
+        ```

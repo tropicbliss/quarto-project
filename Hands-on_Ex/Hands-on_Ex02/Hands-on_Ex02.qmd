@@ -10,9 +10,7 @@ execute:
 
 Note: Lessons learned from hands-on exercises are documented in the notes tab.
 
-Thematic mapping involves the use of map symbols to visualize selected
-properties of geographic features that are not naturally visible, such
-as population, temperature, crime rate, and property prices. Geovisualisation, on the other hand, works by providing graphical ideation to render a place, a phenomenon or a process visible.
+Thematic mapping involves the use of map symbols to visualize selected properties of geographic features that are not naturally visible, such as population, temperature, crime rate, and property prices. Geovisualisation, on the other hand, works by providing graphical ideation to render a place, a phenomenon or a process visible.
 
 ```{r}
 pacman::p_load(sf, tmap, tidyverse)
@@ -28,9 +26,7 @@ popdata <- read_csv("data/aspatial/respopagesextod2011to2020.csv")
 
 ## Data wrangling
 
-Before a thematic map can be prepared, you are required to prepare a
-data table with year 2020 values. The data table should include the
-variables PA, SZ, YOUNG, ECONOMY ACTIVE, AGED, TOTAL, DEPENDENCY.
+Before a thematic map can be prepared, you are required to prepare a data table with year 2020 values. The data table should include the variables PA, SZ, YOUNG, ECONOMY ACTIVE, AGED, TOTAL, DEPENDENCY.
 
 -   YOUNG: age group 0 to 4 until age groyup 20 to 24,
 
