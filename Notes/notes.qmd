@@ -144,6 +144,26 @@ execute:
 
     -   Simple features are represented via "simple features geometry (SFG)", and they and geospatial data can be represented with "simple features objects (SFO)" which represent a collection of SFG as a data-frame object. The non-spatial data (metadata) are stored in a separate column separate from the SFG column. The data type of that SFG column is known as "simple features collection (SFC)".
 
+    -   SFO is an object, you can get the class by passing in a variable to the `class` function.
+
+    -   In the environments tab, "obs" stands for observations which is basically the number of rows. "Variables" represent the number of columns.
+
+    -   The data types you will be working with for each column would be:
+
+        -   `int`
+
+        -   `chr`
+
+            -   Basically a string.
+
+        -   `Date`
+
+        -   `num`
+
+            -   A superclass of `int` and `double`. R will automatically cast it to its child classes if needed, but this is basically a generic number class.
+
+        -   `sfc_MULTIPOLYGON`
+
 -   `sf` functions
 
     -   `sf` also provides functions that help you in doing data manipulation and analysis of spatial data.
@@ -160,9 +180,19 @@ execute:
 
                 -   A misnomer as it is basically a collection of files (hence a single `shp` file is not enough). File extensions include: `dbf`, `prj`, `shp`, `xml`, and `shx`.
 
+                -   `dsn` stands for destination.
+
                     ```         
                     sf_mpsz = st_read(dsn = "data/geospatial", layer = "MP14_SUBZONE")
                     st_write(st_poly, "data/my_poly.shp")
+                    ```
+
+                    Typically you don't have to specify the layer since it usually only has one.
+
+                    Exporting to KML:
+
+                    ```         
+                    st_write(mpsz, "data/geospatial/MP14_SUBZONE_WEB_PL.kml", delete_dsn = TRUE)
                     ```
 
             -   MapInfo TAB
@@ -174,6 +204,14 @@ execute:
                 ```
 
                 You need to provide the file extension if it is not a Shapefile.
+
+                KML is typically less tidier than Shapefiles in terms of non-geographical metadata, hence we typically only use it to merge with Shapefiles using `st_intersect`.
+
+                ```         
+                <center><table><tr><th colspan='2' align='center'><em>Attributes</…
+                ```
+
+                You'll have to manually parse and extract the data.
 
             -   GML
 
@@ -747,7 +785,7 @@ execute:
                   .funs = list(toupper))
         ```
 
-        Mutate columns "PA" and "SZ" by converting them to uppercase. You can apply multiple different kinds of operations but we are only using one.
+        Mutate columns "PA" and "SZ" by converting them to uppercase. You can apply multiple different kinds of operations but we are only using one. This is useful for joining multiple data-frames.
 
 -   Making Choropleth maps
 

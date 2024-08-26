@@ -1,7 +1,76 @@
 ---
 title: "In-class Exercise 2"
 author: "Eugene Toh"
-date: "August 26, 2024"
+date: "last-modified"
 execute:
   freeze: true
 ---
+
+```{r}
+pacman::p_load(tidyverse, sf, tmap)
+```
+
+```{r}
+mpsz <- st_read(dsn = "data/geospatial")
+```
+
+-   Simple features are represented via "simple features geometry (SFG)", and they and geospatial data can be represented with "simple features objects (SFO)" which represent a collection of SFG as a data-frame object. The non-spatial data (metadata) are stored in a separate column separate from the SFG column. The data type of that SFG column is known as "simple features collection (SFC)".
+
+-   SFO is an object, you can get the class by passing in a variable to the `class` function.
+
+-   In the environments tab, "obs" stands for observations which is basically the number of rows. "Variables" represent the number of columns.
+
+-   The data types you will be working with for each column would be:
+
+    -   `int`
+
+    -   `chr`
+
+        -   Basically a string.
+
+    -   `Date`
+
+    -   `num`
+
+        -   A superclass of `int` and `double`. R will automatically cast it to its child classes if needed, but this is basically a generic number class.
+
+```{r}
+mpsz2019 <- st_read(dsn = "data/geospatial/MasterPlan2019SubzoneBoundaryNoSeaKML.kml") %>% st_transform(crs = 3414)
+```
+
+If you look at the KML version, you can see that it is less tidier than the Shapefile version.
+
+```         
+<center><table><tr><th colspan='2' align='center'><em>Attributes</…
+```
+
+You'll have to manually parse and extract the data. Hence, the Shapefile version will be the one we are going to use.
+
+```{r}
+tm_shape(mpsz)+
+  tm_fill("REGION_N", 
+          style = "quantile",
+          palette = "plasma",
+          title = "Subzones") +
+  tm_layout(main.title = "Planning subzones of Singapore (2014)",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.height = 0.45, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", size = 2) +
+  tm_scale_bar() +
+  tm_credits("Source: Planning Sub-zone boundary from Urban Redevelopment Authorithy (URA)")
+```
+
+```{r}
+preschool = st_read("data/geospatial/PreSchoolsLocation.kml")
+preschool3414 <- st_transform(preschool, crs = 3414)
+```
+
+```{r}
+popdata <- st_read("data/aspatial/respopagesextod2023.csv")
+popdata2023 <- popdata %>%
+  group_by(PA, SZ, AG)
+```

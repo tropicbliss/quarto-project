@@ -146,6 +146,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="dropdown-item" href="../In-class_Ex/In-class_Ex01/In-class_Ex01.html">
  <span class="dropdown-text">In-class Exercise 1</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex02/In-class_Ex02.html">
+ <span class="dropdown-text">In-class Exercise 2</span></a>
+  </li>  
     </ul>
   </li>
 </ul>
@@ -340,7 +344,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><p>Shapefile</p>
 <ul>
-<li><p>A misnomer as it is basically a collection of files (hence a single <code>shp</code> file is not enough). File extensions include: <code>dbf</code>, <code>prj</code>, <code>shp</code>, <code>xml</code>, and <code>shx</code>.</p>
+<li><p>A misnomer as it is basically a collection of files (hence a single <code>shp</code> file is not enough). File extensions include: <code>dbf</code>, <code>prj</code>, <code>shp</code>, <code>xml</code>, and <code>shx</code>.</p></li>
+<li><p><code>dsn</code> stands for destination.</p>
 <pre><code>sf_mpsz = st_read(dsn = "data/geospatial", layer = "MP14_SUBZONE")
 st_write(st_poly, "data/my_poly.shp")</code></pre></li>
 </ul></li>
