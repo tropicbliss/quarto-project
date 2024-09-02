@@ -1,0 +1,34 @@
+---
+title: "In-class Exercise 3"
+author: "Eugene Toh"
+date: "last-modified"
+execute:
+  freeze: true
+---
+
+```{r}
+#| eval: false
+
+install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
+```
+
+```{r}
+#| eval: false
+
+sg_sf <- mpsz_sf %>% st_union()
+```
+
+The analog of `ppp` and `owin` in `sf`. The `as.*` methods are used for conversion which can convert from data-frames which is essentially how SFOs are represented.
+
+The reason why `as.SpatialGridDataFrame.im` does not work is because `maptools` is not installed.
+
+```{r}
+pacman::p_load(dplyr, sf, tidyverse, tmap)
+acled_sf <- read_csv("data/ACLED_Myanmar.csv") %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>% st_transform(crs = 32647) %>% mutate(event_date = dmy(event_date))
+```
+
+```{r}
+tmap_mode("view")
+acled_sf %>% filter(year == 2023 | event_type == "Political violence") %>% tm_shape() + tm_dots()
+tmap_mode("plot")
+```
