@@ -6,15 +6,11 @@ execute:
   freeze: true
 ---
 
-```{r}
-#| eval: false
-
+```         
 install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
 ```
 
-```{r}
-#| eval: false
-
+```         
 sg_sf <- mpsz_sf %>% st_union()
 ```
 
@@ -28,6 +24,8 @@ acled_sf <- read_csv("data/ACLED_Myanmar.csv") %>% st_as_sf(coords = c("longitud
 ```
 
 ```{r}
+#| eval: false
+
 tmap_mode("view")
 acled_sf %>% filter(year == 2023 | event_type == "Political violence") %>% tm_shape() + tm_dots()
 tmap_mode("plot")
