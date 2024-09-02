@@ -188,9 +188,7 @@ tm_shape(coincident_points) +
 tmap_mode("plot")
 ```
 
-There are three ways to overcome this problem. The easiest way is to
-delete the duplicates. But, that will also mean that some useful point
-events will be lost.
+There are three ways to overcome this problem. The easiest way is to delete the duplicates. But, that will also mean that some useful point events will be lost.
 
 The second solution is use *jittering*. It is used to add a small amount of random noise to the coordinates of points in a spatial point pattern. This process, often referred to as "jittering," helps to separate coincident points (points that have the exact same coordinates) by moving them slightly apart. This can be particularly useful in spatial analyses where coincident points might violate assumptions, such as the assumption that points are not exactly coincident.
 
@@ -213,8 +211,7 @@ any(duplicated(childcare_ppp_jit))
 
 ### Creating `owin` object
 
-When analysing spatial point patterns, it is a good practice to confine
-the analysis with a geographical area like Singapore boundary. In **spatstat**, an object called ***owin*** is specially designed to represent this polygonal region.
+When analysing spatial point patterns, it is a good practice to confine the analysis with a geographical area like Singapore boundary. In **spatstat**, an object called ***owin*** is specially designed to represent this polygonal region.
 
 The code chunk below is used to covert *sg* SpatialPolygon object into owin object of **spatstat**.
 
@@ -231,9 +228,7 @@ summary(sg_owin)
 
 ### Combining point events object and owin object
 
-In this last step of geospatial data wrangling, we will extract
-childcare events that are located within Singapore by using the code
-chunk below.
+In this last step of geospatial data wrangling, we will extract childcare events that are located within Singapore by using the code chunk below.
 
 ```{r}
 childcareSG_ppp = childcare_ppp[sg_owin]
@@ -256,11 +251,21 @@ In this section, you will learn how to perform first-order SPPA by using **spats
 
 **Kernel Density Estimation (KDE)** is a non-parametric method (does not assume any specific underlying distribution for the data) used to estimate the probability density function (PDF) of a random variable based on a finite sample of data points. In spatial analysis, KDE is often used to estimate the intensity or density of events (such as crime incidents, animal sightings, or disease cases) across a geographical area.
 
+-   Clustered (groups of POI close together)
+
+-   Random (spread out but with irregular spacing)
+
+-   Uniform (spread out but have regular spacing)
+
+Mapping stuff out is exploratory. To quantify it we can employ hypothesis testing.
+
+We essentially count the number of points of interest in a particular area (which we can specify) and calculate the density (or intensity).
+
 In this section, you will learn how to compute the kernel density estimation (KDE) of childcare services in Singapore.
 
 #### Automatic bandwidth selection method
 
-Note: Even though it is called "automatic bandwidth", they are considered fixed bandwidth methods. Use adaptive bandwidth instead if you have highly skewed data. Use fixed bandwidth if you are comparing KDE between regions.
+Note: Even though it is called "automatic bandwidth", they are considered fixed bandwidth methods (you calculate density with the same area throughout). Use adaptive bandwidth instead if you have highly skewed data. Use fixed bandwidth if you are comparing KDE between regions.
 
 The code chunk below computes a kernel density by using the following configurations of [*density()*](https://rdrr.io/cran/spatstat/man/density.ppp.html) of **spatstat**:
 
@@ -272,9 +277,7 @@ The code chunk below computes a kernel density by using the following configurat
 
 -   Setting `edge = TRUE` ensures that edge correction is applied, which adjusts the density estimate near the borders to compensate for this bias.
 
-    -   The intensity estimate is corrected for edge effect bias by using
-        method described by Jones (1993) and Diggle (2010, equation 18.9). The
-        default is *FALSE*.
+    -   The intensity estimate is corrected for edge effect bias by using method described by Jones (1993) and Diggle (2010, equation 18.9). The default is *FALSE*.
 
 ```{r}
 kde_childcareSG_bw <- density(childcareSG_ppp,
@@ -289,14 +292,9 @@ The *plot()* function of Base R is then used to display the kernel density deriv
 plot(kde_childcareSG_bw)
 ```
 
-The density values of the output range from 0 to 0.000035 which is
-way too small to comprehend. This is because the default unit of
-measurement of svy21 is in meter. As a result, the density values
-computed is in “number of points per square meter”.
+The density values of the output range from 0 to 0.000035 which is way too small to comprehend. This is because the default unit of measurement of svy21 is in meter. As a result, the density values computed is in “number of points per square meter”.
 
-Before we move on to next section, it is good to know that you can
-retrieve the bandwidth used to compute the kde layer by using the code
-chunk below.
+Before we move on to next section, it is good to know that you can retrieve the bandwidth used to compute the kde layer by using the code chunk below.
 
 ```{r}
 bw <- bw.diggle(childcareSG_ppp)
@@ -352,9 +350,13 @@ plot(kde_childcareSG.ppl, main = "bw.ppl")
 
 #### Working with different kernel methods
 
-By default, the kernel method used in *density.ppp()* is *gaussian*. But there are three other options, namely: Epanechnikov, Quartic and Dics.
+By default, the kernel method used in *density.ppp()* is *gaussian*. But there are three other options, namely: Epanechnikov, Quartic and Discs.
 
 The code chunk below will be used to compute three more kernel density estimations by using these three kernel function.
+
+These are interpolations to deal with areas that has less data.
+
+If you use Gaussian, you sometimes get negative intensity values, so try to avoid it. Try quartic instead.
 
 ```{r}
 par(mfrow=c(2,2))
@@ -391,7 +393,7 @@ plot(kde_childcareSG_600)
 
 ##### Why would you use fixed bandwidth?
 
-This approach is appropriate in several situations, particularly when the underlying data is relatively uniform in its distribution and when the focus is on identifying broad trends or when the study area does not exhibit significant variations in density.
+This approach is appropriate in several situations, particularly when the underlying data is relatively uniform in its distribution (extremely unlikely unless the area of analysis is small) and when the focus is on identifying broad trends or when the study area does not exhibit significant variations in density.
 
 ##### How would you know if your data is highly skewed?
 
@@ -411,6 +413,8 @@ plot(kde_childcareSG_adaptive)
 ```
 
 We can compare the fixed and adaptive kernel density estimation outputs by using the code chunk below.
+
+Unlike fixed bandwidth, we adjust the area according to the density of points.
 
 ```{r}
 par(mfrow=c(1,2))
@@ -460,8 +464,7 @@ Notice that the raster values are encoded explicitly onto the raster pixel using
 
 ### Comparing Spatial Point Patterns using KDE
 
-In this section, you will learn how to compare KDE of childcare at
-Ponggol, Tampines, Chua Chu Kang and Jurong West planning areas.
+In this section, you will learn how to compare KDE of childcare at Ponggol, Tampines, Chua Chu Kang and Jurong West planning areas.
 
 The code chunk below will be used to extract the target planning areas.
 
@@ -505,6 +508,8 @@ jw_owin = as.owin(jw)
 ```
 
 By using the code chunk below, we are able to extract childcare that is within the specific region to do our analysis later on.
+
+Now why would you bother to split them up? To analyse spatial randomness it is essential to exclude regions like the airport where there are no childcare centres.
 
 ```{r}
 childcare_pg_ppp = childcare_ppp_jit[pg_owin]
@@ -632,7 +637,7 @@ In the code chunk below, [*clarkevans.test()*](https://rdrr.io/cran/spatstat/man
 
 -   **Null Hypothesis (Ho)**: The distribution of childcare services is randomly distributed (CSR, Complete Spatial Randomness).
 
--   **Alternative Hypothesis (H1)**: The distribution of childcare services is **not** randomly distributed. This includes both possibilities: the points may be either clustered (R \< 1) or regularly spaced (R \> 1).
+-   **Alternative Hypothesis (H1)**: The distribution of childcare services is **not** randomly distributed. This includes both possibilities: the points may be either clustered (R \< 1) or regularly spaced (R \> 1). If the index is close or equal to 1, the patterns exhibit randomness.
 
 **Regularity** (also known as **dispersion**) in the context of spatial point patterns refers to a distribution where points are more evenly spaced than would be expected under complete spatial randomness (CSR). Essentially, regularity or dispersion implies that points are systematically spread out, avoiding clustering, and often maintaining a more uniform distance from each other.
 
@@ -647,6 +652,12 @@ clarkevans.test(childcare_ck_ppp,
 -   Since the **p-value is large (0.4801)**, you **fail to reject** the null hypothesis (Ho). This means that the observed pattern of childcare services in `childcare_ck_ppp` is **not significantly different from random**.
 
 -   **Conclusion**: The distribution of childcare services is consistent with complete spatial randomness (CSR). There is no statistically significant evidence to suggest that the points are either clustered or regularly spaced.
+
+Note: Since you are using more simulation iterations, the time taken to run the tests will be longer. Since this is essentially Monte Carlo simulation, to satisfy a 95% confidence interval, we need a minimum of 39 for convergence. 99, 199, 999 are common values. We need a greater amount to achieve a more stable result. Note that 99 means that you are running it 100 times.
+
+Note that it is typical for randomness to occur when the area of analysis is high. It is important to figure out that at what distance does clustering occur and at what distance randomness starts to appear again. This can be done using the L function. We can further modify the L function to make it from a diagonal to a straight line. We have lots of different functions, like G function (zonal - within a ring buffer, how many points are there, and slowly draw more and more bigger rings, so unlike K function it is not cumulative, there is no straight version of it) or K function (the L function is the same as the K function except a transformation is applied to the result to make the graph straight, making it easier to interpret). Each employ a different shape but they are all distance based. Some analyse distances zone by zone while some are cumulative.
+
+Also, if you need a constant result, you have to set the seed. You only have to set the seed once at the top of the document for maximum reproducibility.
 
 ### 1. **One-Sided Test (Clustered or Dispersed)**:
 
