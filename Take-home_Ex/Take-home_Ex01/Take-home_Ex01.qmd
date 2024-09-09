@@ -1,0 +1,94 @@
+---
+title: "Take Home Exercise 1"
+author: "Eugene Toh"
+date: "last-modified"
+execute:
+  freeze: true
+---
+
+Geospatial analytics offer valuable insights into the patterns of armed conflict, enabling better understanding and response strategies. This study focuses on armed conflict events in Myanmar from January 2021 to June 2024, using data from the Armed Conflict Location & Event Data (ACLED) project. The analysis examines the spatial and temporal distribution of four key event types: Battles, Explosion/Remote Violence, Strategic Developments, and Violence Against Civilians. By investigating quarterly data, this study aims to reveal patterns in the conflict, contributing to a deeper understanding of the ongoing violence in Myanmar.
+
+To start off, let's begin by importing all the necessary libraries:
+
+```{r}
+pacman::p_load(sf, tidyverse, tmap)
+```
+
+Now that we have done so, let's load the necessary combat data from ACLED (note that due to API limitations I am only able to get data from a certain starting date):
+
+```{r}
+conflict_data <- read_csv("data/2021-08-31-2024-06-30-Myanmar.csv")
+```
+
+```{r}
+list(conflict_data)
+```
+
+We have the latitude and longitude of event locations. We need to convert them into SFOs such that we can work with them using the `sf` library. Additionally, we need to normalise the dates such that they are all standardised into the same format that is computer readable.
+
+```{r}
+conflict_data <- conflict_data %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>% st_transform(crs = 32647) %>% mutate(event_date = dmy(event_date))
+list(conflict_data)
+```
+
+Now that we have the armed conflict data, let's import the administrative boundary data:
+
+```{r}
+boundaries <- st_read("data", layer = "mmr_polbnda2_adm1_250k_mimu_1")
+```
+
+```{r}
+st_crs(boundaries)
+```
+
+This is currently in WGS84, and we need to convert it into a projected coordinate system so we can work with the data.
+
+```{r}
+boundaries <- boundaries %>% st_transform(crs = 32647)
+st_crs(boundaries)
+```
+
+Now, let's map out the conflict areas with regards to political violence in the year 2023:
+
+```{r}
+tmap_mode("view")
+conflict_data %>% filter(year == 2023 | event_type == "Political violence") %>% tm_shape() + tm_dots()
+tmap_mode("plot")
+```
+
+A horrifying amount, most of which seems to be clustered at the interior of Myanmar. Let's overlay an administrative district map to see where most of them are all located at:
+
+```{r}
+tmap_mode('plot')
+map1 <- tm_shape(boundaries) +
+  tm_fill() +
+  tm_borders() +
+  tm_text("ST", size = 0.8, col = "blue", auto.placement = TRUE)
+map2 <- tm_shape(boundaries) +
+  tm_fill() +
+  tm_borders() +
+  tm_shape(conflict_data) +
+  tm_dots()
+tmap_arrange(map1, map2, ncol = 2)
+```
+
+Most of them seem to cluster around the states of Rakhine and Chin.
+
+## Quarterly KDE analysis
+
+Now we are going to apply Kernel Density Estimation (KDE) to conflict events for each quarter of the year. These layers show the density of events over a geographic area, which can help visualize how the concentration of those events changes over time, particularly on a quarterly basis. However, to do that we need to choose an appropriate year to observe the by-quarterly results. After much deliberation I have chose 2022 as the best year for this, and here's why:
+
+-   The coup started in February 2021. While it might be interesting to analyse the slow growth in conflicts over time, the data is not representative of the Myanmar conflict as a whole.
+
+-   In 2022, the political and military landscape had largely stabilized after the initial shock of the coup in 2021. The armed resistance led by various ethnic armed organizations (EAOs) and the People's Defense Forces (PDFs) was more organized and widespread.
+
+### Data extraction and filtering
+
+Extracting conflict data by quarter:
+
+```{r}
+conflict_data_2022_q1 <- conflict_data %>% filter(event_date >= as.Date("2022-01-01") & event_date <= as.Date("2022-03-31"))
+conflict_data_2022_q2 <- conflict_data %>% filter(event_date >= as.Date("2022-04-01") & event_date <= as.Date("2022-06-30"))
+conflict_data_2022_q3 <- conflict_data %>% filter(event_date >= as.Date("2022-07-01") & event_date <= as.Date("2022-09-30"))
+conflict_data_2022_q4 <- conflict_data %>% filter(event_date >= as.Date("2022-10-01") & event_date <= as.Date("2022-12-31"))
+```

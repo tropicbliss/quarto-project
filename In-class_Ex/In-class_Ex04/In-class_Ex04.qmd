@@ -1,0 +1,104 @@
+---
+title: "In-class Exercise 4"
+---
+
+```{r}
+pacman::p_load(sf, raster, spatstat, sparr, tmap, tidyverse)
+```
+
+```{r}
+geography <- st_read("data/rawdata") %>% st_union() %>% st_zm(drop = TRUE, what = "ZM") %>% st_transform(crs = 32748)
+```
+
+Polygon Z: polygons with height data, you need to remove it.
+
+Converting it into owin:
+
+```{r}
+kbb_owin <- as.owin(geography)
+kbb_owin
+```
+
+Checking whether it is really an owin:
+
+```{r}
+class(kbb_owin)
+```
+
+```{r}
+fire_sf <- read_csv("data/rawdata/forestfires.csv") %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>% st_transform(crs = 32748) # do not switch order of latlong
+```
+
+Now, you want separate fields for day, month, and year for easier data filtering. The `DayOfYear` field takes the number of days in a year into account.
+
+```{r}
+fire_sf <- fire_sf %>% mutate(DayOfYear = yday(acq_date)) %>%
+  mutate(Month_num = month(acq_date)) %>%
+  mutate(Month_fac = month(acq_date, label = TRUE, abbr = FALSE))
+```
+
+```{r}
+tm_shape(geography) +
+  tm_polygons() +
+  tm_shape(fire_sf) +
+  tm_dots()
+```
+
+Use `tm_symbols` or `tm_markers` if you have a custom point logo.
+
+Polygon \> line \> point.
+
+A facet is a set of maps.
+
+```{r}
+tm_shape(geography) +
+  tm_polygons() +
+  tm_shape(fire_sf) +
+  tm_dots(size = 0.1) +
+  tm_facets(by = "Month_fac", free.coords = FALSE, drop.units = TRUE)
+```
+
+`free.coords` make sure that each map has the same map extent.
+
+Extracting by month:
+
+```{r}
+fire_month <- fire_sf %>% select(Month_num)
+```
+
+Creating ppp (to use `spatstat`):
+
+```{r}
+fire_month_ppp <- as.ppp(fire_month)
+fire_month_ppp
+```
+
+```{r}
+summary(fire_month_ppp)
+```
+
+```{r}
+fire_month_owin <- fire_month_ppp[kbb_owin]
+summary(fire_month_owin)
+```
+
+Spatio-temporal KDE:
+
+```{r}
+st_kde <- spattemp.density(fire_month_owin)
+summary(st_kde)
+```
+
+Most of the fires started from July onwards:
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10 # use this if things are too cramped for graphs
+tims <- c(7, 8, 9, 10, 11, 12)
+par(mfcol=c(2, 3))
+for (i in tims) {
+  plot(st_kde, i, override.par=FALSE, fix.range=TRUE, main = paste("KDE at month", i))
+}
+```
+
+Instead of using month, you can use day which can make the value of lambda more meaningful.
