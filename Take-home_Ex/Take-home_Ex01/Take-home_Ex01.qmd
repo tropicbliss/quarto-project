@@ -377,14 +377,14 @@ H1= The distribution of conflicts are not randomly distributed (the events are c
 The 95% confident interval will be used.
 
 ```{r}
-clarkevans.test(conflictMYQ1_ppp,
+clarkevans.test(superimpose(conflictMYQ1_ppp, conflictMYQ2_ppp, conflictMYQ3_ppp, conflictMYQ4_ppp),
                 correction="none",
                 clipregion="national_boundaries_owin",
                 alternative=c("clustered"),
                 nsim=99)
 ```
 
-Since our R-value is less than 1, it indicates clustering. In this case, R = 0.208, which is significantly less than 1, indicating that the conflicts are clustered.
+Since our R-value is less than 1, it indicates clustering. In this case, R = 0.16171, which is significantly less than 1, indicating that the conflicts are clustered.
 
 The p-value represents the probability of observing such a clustered pattern under the null hypothesis of randomness. A p-value less than the significance level (α = 0.05) allows us to reject the null hypothesis. In this case, the p-value is extremely small (essentially zero), far below the 0.05 threshold.
 
