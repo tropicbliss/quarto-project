@@ -11,7 +11,7 @@ Geospatial analytics offer valuable insights into the patterns of armed conflict
 To start off, let's begin by importing all the necessary libraries:
 
 ```{r}
-pacman::p_load(sf, tidyverse, tmap)
+pacman::p_load(sf, tidyverse, tmap, spatstat, raster)
 ```
 
 Now that we have done so, let's load the necessary combat data from ACLED (note that due to API limitations I am only able to get data from a certain starting date):
@@ -63,7 +63,7 @@ tmap_mode('plot')
 map1 <- tm_shape(boundaries) +
   tm_fill() +
   tm_borders() +
-  tm_text("ST", size = 0.8, col = "blue", auto.placement = TRUE)
+  tm_text("ST", size = 0.2, col = "blue")
 map2 <- tm_shape(boundaries) +
   tm_fill() +
   tm_borders() +
@@ -71,8 +71,6 @@ map2 <- tm_shape(boundaries) +
   tm_dots()
 tmap_arrange(map1, map2, ncol = 2)
 ```
-
-Most of them seem to cluster around the states of Rakhine and Chin.
 
 ## Quarterly KDE analysis
 
@@ -92,3 +90,304 @@ conflict_data_2022_q2 <- conflict_data %>% filter(event_date >= as.Date("2022-04
 conflict_data_2022_q3 <- conflict_data %>% filter(event_date >= as.Date("2022-07-01") & event_date <= as.Date("2022-09-30"))
 conflict_data_2022_q4 <- conflict_data %>% filter(event_date >= as.Date("2022-10-01") & event_date <= as.Date("2022-12-31"))
 ```
+
+### Data conversion
+
+```         
+::: {.callout-note}
+The bandwidth in the context of KDE is a critical parameter that determines the level of smoothing applied to the data when estimating the density. It controls how much each data point influences the estimate of the density around it.
+:::
+```
+
+Next, we need to convert the generic `sp` objects into `spatstat`'s `ppp` object.
+
+```{r}
+conflict_data_2022_q1_ppp <- as.ppp(conflict_data_2022_q1)
+conflict_data_2022_q2_ppp <- as.ppp(conflict_data_2022_q2)
+conflict_data_2022_q3_ppp <- as.ppp(conflict_data_2022_q3)
+conflict_data_2022_q4_ppp <- as.ppp(conflict_data_2022_q4)
+```
+
+```{r}
+plot(conflict_data_2022_q1_ppp)
+```
+
+```{r}
+summary(conflict_data_2022_q1_ppp)
+```
+
+Many statistical methods in spatial point pattern analysis are based on the assumption that the underlying point process is simple. A simple point process means that no two points in the process can occupy the exact same location (i.e., they cannot be coincident).
+
+If points are coincident, this assumption is violated, and the statistical methods that rely on this assumption may produce invalid or misleading results.
+
+Thus, let's check if there are any duplicate points:
+
+```{r}
+any(duplicated(conflict_data_2022_q1_ppp))
+any(duplicated(conflict_data_2022_q2_ppp))
+any(duplicated(conflict_data_2022_q3_ppp))
+any(duplicated(conflict_data_2022_q4_ppp))
+```
+
+As you can see, there doesn't seem to be any duplicated data points.
+
+Next, we need to create an `owin` object. This helps to confine the analysis within a specific geographical area.
+
+```{r}
+boundaries_owin <- as.owin(boundaries)
+```
+
+```{r}
+plot(boundaries_owin)
+```
+
+As, you can see, the `owin` object contains state boundaries, which we don't need. We need to find a way to dissolve those state boundaries.
+
+```{r}
+myanmar_sf <- st_union(boundaries)
+```
+
+```{r}
+plot(myanmar_sf)
+```
+
+Still not that good. Luckily the website also contain geographical data that does not include state lines.
+
+```{r}
+national_boundaries <- st_read("data", layer = "mmr_polbnda_adm0_250k_mimu_1") %>% st_transform(crs = 32647)
+st_crs(boundaries)
+```
+
+```{r}
+national_boundaries_owin <- as.owin(national_boundaries)
+```
+
+```{r}
+plot(national_boundaries_owin)
+```
+
+That's much better. We simply need to combine the `ppp` and the `owin` objects.
+
+```{r}
+conflictMYQ1_ppp <- conflict_data_2022_q1_ppp[national_boundaries_owin]
+conflictMYQ2_ppp <- conflict_data_2022_q2_ppp[national_boundaries_owin]
+conflictMYQ3_ppp <- conflict_data_2022_q3_ppp[national_boundaries_owin]
+conflictMYQ4_ppp <- conflict_data_2022_q4_ppp[national_boundaries_owin]
+```
+
+```{r}
+summary(conflictMYQ1_ppp)
+```
+
+```{r}
+plot(conflictMYQ1_ppp)
+```
+
+```{r}
+crs_info <- st_crs(national_boundaries)
+unit_of_measurement <- crs_info$units
+print(unit_of_measurement)
+```
+
+First, we need to convert the unit of measurement to kilometres since the density values would be too small to comprehend.
+
+```{r}
+conflictMYQ1_ppp.km <- rescale.ppp(conflictMYQ1_ppp, 1000, "km")
+conflictMYQ2_ppp.km <- rescale.ppp(conflictMYQ2_ppp, 1000, "km")
+conflictMYQ3_ppp.km <- rescale.ppp(conflictMYQ3_ppp, 1000, "km")
+conflictMYQ4_ppp.km <- rescale.ppp(conflictMYQ4_ppp, 1000, "km")
+```
+
+### Working with different bandwidth methods
+
+```{r}
+bw.CvL(conflictMYQ1_ppp.km)
+```
+
+```{r}
+bw.scott(conflictMYQ1_ppp.km)
+```
+
+```{r}
+bw.ppl(conflictMYQ1_ppp.km)
+```
+
+```{r}
+bw.diggle(conflictMYQ1_ppp.km)
+```
+
+The sigma values for `bw.diggle` and `bw.ppl` seem way too small. A small sigma value might result in sudden spikes of the data over an extremely small area, which would not be useful when analysing such a large geographical area. Since the conflict data contains regions where points seem to be highly clustered, an automatic bandwidth selection method might select a smaller `sigma` to capture the fine structure in those areas. This can lead to undersmoothing across the entire dataset, making the density plot appear as many small bright spots with abrupt transitions.
+
+```{r}
+kde_conflictMYQ1_scott <- density(conflictMYQ1_ppp.km, sigma=bw.scott, edge=TRUE, kernel="quartic")
+kde_conflictMYQ1_CvL <- density(conflictMYQ1_ppp.km, sigma=bw.scott, edge=TRUE, kernel="quartic")
+par(mfrow=c(1,2))
+plot(kde_conflictMYQ1_scott, main = "bw.scott")
+plot(kde_conflictMYQ1_CvL, main = "bw.CvL")
+```
+
+From trial and error, it seems like `bw.scott` is the best fit for our use case.
+
+The `edge` parameter controls whether edge correction should be applied. Edge correction accounts for the fact that points near the boundaries of the observation window have fewer neighbors and, without correction, could lead to underestimation of density near the edges.Setting `edge = TRUE` ensures that edge correction is applied, which adjusts the density estimate near the borders to compensate for this bias.
+
+To avoid negative intensity values, for kernel methods I will choose `"quartic"`.
+
+### Plotting our results
+
+Since we are analysing the same geographical area over a period of time, and we want to apply the same amount of smoothing, I am going to use the sigma value derived from the first quarter using `bw.scott` and apply it to all quarters.
+
+```{r}
+kde_sigma <- bw.scott(conflictMYQ1_ppp.km)
+kde_conflictMYQ1.bw <- density(conflictMYQ1_ppp.km, sigma=kde_sigma, edge=TRUE, kernel="quartic")
+kde_conflictMYQ2.bw <- density(conflictMYQ2_ppp.km, sigma=kde_sigma, edge=TRUE, kernel="quartic")
+kde_conflictMYQ3.bw <- density(conflictMYQ3_ppp.km, sigma=kde_sigma, edge=TRUE, kernel="quartic")
+kde_conflictMYQ4.bw <- density(conflictMYQ4_ppp.km, sigma=kde_sigma, edge=TRUE, kernel="quartic")
+```
+
+Next, I am going to convert this into a `raster` object to make it `ggplot2` compatible, to make it easier to plot with:
+
+```{r}
+kde_conflictMYQ1_raster <- raster(kde_conflictMYQ1.bw)
+kde_conflictMYQ2_raster <- raster(kde_conflictMYQ2.bw)
+kde_conflictMYQ3_raster <- raster(kde_conflictMYQ3.bw)
+kde_conflictMYQ4_raster <- raster(kde_conflictMYQ4.bw)
+```
+
+Let us take a look at the properties of the `RasterLayer`s created.
+
+```{r}
+kde_conflictMYQ1_raster
+```
+
+Notice that the `crs` property is NA. We need to set it to an appropriate value.
+
+```{r}
+projection(kde_conflictMYQ1_raster) <- CRS("+init=EPSG:32647")
+projection(kde_conflictMYQ2_raster) <- CRS("+init=EPSG:32647")
+projection(kde_conflictMYQ3_raster) <- CRS("+init=EPSG:32647")
+projection(kde_conflictMYQ4_raster) <- CRS("+init=EPSG:32647")
+```
+
+Now, it's finally time to plot the data.
+
+#### 1st quarter
+
+```{r}
+raster_map <- tm_shape(kde_conflictMYQ1_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+boundary_map <- tm_shape(boundaries) +
+  tm_borders() +
+  tm_text("ST", size = 0.3, col = "blue")
+tmap_arrange(raster_map, boundary_map, ncol=2)
+```
+
+The map reveals that much of the conflict occurred in Sagaing and Magway, with localized fighting in Shan (South) and Kayah, and another significant hotspot in Yangon. This aligns with news reports indicating that during the first quarter of 2022, the Myanmar conflict was primarily concentrated in Rakhine, Chin, Sagaing, and Magway regions. Sagaing and Magway, in particular, saw numerous battles involving the People’s Defence Forces (PDF), while Chin State experienced substantial conflict due to its proximity to India and the presence of active ethnic insurgent groups. Meanwhile, Rakhine State remained a key battleground for clashes between the Arakan Army (AA) and the Tatmadaw.
+
+Sagaing and Magway became strongholds for the PDF, local militias that formed in response to the military coup. These regions saw widespread opposition to military rule, with strong support for the armed struggle against the Tatmadaw. The terrain in Sagaing, in particular, provided resistance groups with strategic advantages for carrying out guerrilla-style attacks on military convoys and outposts.
+
+Yangon, Myanmar’s largest city, also became a significant hotspot during this period. While most rural areas were engulfed in insurgency and military battles, urban resistance in Yangon consisted of sabotage operations, targeted assassinations, and bombings orchestrated by the PDF and other resistance groups. These attacks targeted military personnel, government officials, and infrastructure, making Yangon a focal point of urban conflict.
+
+In Shan (South) and Kayah, localized conflicts arose due to territorial disputes and long-standing tensions. Both regions are home to multiple ethnic armed groups, and the fighting reflected ongoing struggles for control and autonomy in the area.
+
+#### 2nd quarter
+
+```{r}
+raster_map <- tm_shape(kde_conflictMYQ2_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+boundary_map <- tm_shape(boundaries) +
+  tm_borders() +
+  tm_text("ST", size = 0.3, col = "blue")
+tmap_arrange(raster_map, boundary_map, ncol=2)
+```
+
+In the second quarter, fighting became more concentrated in Sagaing, Magway, and Chin State. In particular, the conflict in Chin State intensified as clashes escalated between the Tatmadaw and ethnic insurgent groups, including the Chin National Front (CNF) and local PDF forces. Chin State's strategic location near the Indian border made it a key theater of conflict, prompting increased military offensives against insurgent strongholds. This led to more intense military operations and a rise in human rights abuses, such as arbitrary detentions and targeted attacks on civilians.
+
+Meanwhile, conflict in Shan (South)/Kayah and Yangon showed signs of abating. The Tatmadaw redirected its focus to the more intense fighting in Sagaing, Magway, and Chin, which had become central battlegrounds due to the growing strength of the PDF. This shift likely reduced military pressure in Shan (South) and Kayah, contributing to the decline in conflict there. Additionally, reports of temporary ceasefires or negotiation efforts between the Tatmadaw and some ethnic armed organizations (EAOs) may have contributed to the decrease in reported conflicts, although these ceasefires are often fragile.
+
+Tanintharyi experienced a rise in reported conflicts during the second quarter. Previously, this southern Myanmar region had been relatively less impacted by the conflict, but by quarter 2, it saw increased activity due to escalating resistance from local People's Defence Forces (PDF) and clashes with the military. The region's strategic coastal position and its proximity to Thailand likely played a role in its growing importance in the conflict.
+
+#### 3rd quarter
+
+```{r}
+raster_map <- tm_shape(kde_conflictMYQ3_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+boundary_map <- tm_shape(boundaries) +
+  tm_borders() +
+  tm_text("ST", size = 0.3, col = "blue")
+tmap_arrange(raster_map, boundary_map, ncol=2)
+```
+
+Between quarters 2 and 3, the conflict in Shan (South) and Kayah significantly decreased, while fighting in Yangon returned to the intensity seen in quarter 1. The People's Defence Forces (PDF) and other resistance groups likely resumed urban operations, including sabotage, bombings, and targeted assassinations, directed at military personnel and government officials. This resurgence indicates a renewal of urban resistance despite heightened military crackdowns. Meanwhile, Rakhine State experienced a sharp rise in reported conflicts. The Arakan Army (AA) intensified its efforts against the Tatmadaw, seeking greater control over the region. The AA's renewed activity led to more frequent clashes, with the fighting spreading to more densely populated areas, worsening the humanitarian crisis.
+
+#### 4th quarter
+
+```{r}
+raster_map <- tm_shape(kde_conflictMYQ4_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+boundary_map <- tm_shape(boundaries) +
+  tm_borders() +
+  tm_text("ST", size = 0.3, col = "blue")
+tmap_arrange(raster_map, boundary_map, ncol=2)
+```
+
+In quarter 4, fighting became more localized in Sagaing, while conflict in Chin State subsided. However, hostilities persisted in Rakhine, Yangon, and Tanintharyi.
+
+In Sagaing, the fighting intensified and became more concentrated, likely due to the Tatmadaw’s increased efforts to suppress resistance forces, particularly in rural areas where the People's Defence Forces (PDF) operated. The region’s terrain, which is conducive to guerrilla tactics, allowed resistance groups to continue their operations, despite the fighting being confined to specific pockets. The Tatmadaw may have redirected more resources to Sagaing, leading to a reduction in larger-scale battles elsewhere.
+
+Earlier in the year, Chin State had experienced heavy fighting, but by quarter 4, both sides may have been experiencing resource exhaustion, resulting in a relative lull in conflict. The state’s terrain and its cross-border dynamics with India may have also contributed to the decrease in confrontations.
+
+Rakhine State remained a key battleground, with ongoing clashes between the Arakan Army (AA) and the Tatmadaw. The AA’s growing strength and territorial ambitions fueled the conflict as they sought greater autonomy for the region. The Tatmadaw likely prioritized Rakhine due to its strategic importance along the Bay of Bengal.
+
+Tanintharyi continued to witness fighting, largely due to its strategic location and the rising presence of resistance groups. Its proximity to the Thai border made the region a crucial area for supply routes and safe havens for resistance forces, resulting in sustained military clashes.
+
+#### Summary
+
+```{r}
+q1_graph <- tm_shape(kde_conflictMYQ1_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+q2_graph <- tm_shape(kde_conflictMYQ2_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+q3_graph <- tm_shape(kde_conflictMYQ3_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+q4_graph <- tm_shape(kde_conflictMYQ4_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+tmap_arrange(q1_graph, q2_graph, q3_graph, q4_graph, asp=2, ncol=2)
+```
+
+### Is the conflict clustered or dispersed?
+
+We can use Clark-Evans test to test for whether the distribution of conflicts is clustered or dispersed across Myanmar. This can help us understand the underlying patterns and drivers of conflict. If the conflict events are clustered in specific areas, it suggests the presence of hotspots driven by factors such as ethnic tensions, military strategies, or geographical advantages.
+
+Since I am coming in with the notion that the distribution of conflicts are highly clustered. I am going to use a one-tailed Clark-Evans test. I am however not going to use edge correction for my test, as I personally feel that the study area is large enough that it is not sufficient to result in fewer neighbours along the boundaries. In fact, data so far has shown that that is in fact the opposite. Fighting seemed more intense in areas bordering India and Thailand.
+
+The test hypotheses are:
+
+Ho = The distribution of conflicts are randomly distributed (complete spatial randomness when R = 1).
+
+H1= The distribution of conflicts are not randomly distributed (the events are clustered and closer together than expected under random distribution when R \< 1).
+
+The 95% confident interval will be used.
+
+```{r}
+clarkevans.test(conflictMYQ1_ppp,
+                correction="none",
+                clipregion="national_boundaries_owin",
+                alternative=c("clustered"),
+                nsim=99)
+```
+
+Since our R-value is less than 1, it indicates clustering. In this case, R = 0.208, which is significantly less than 1, indicating that the conflicts are clustered.
+
+The p-value represents the probability of observing such a clustered pattern under the null hypothesis of randomness. A p-value less than the significance level (α = 0.05) allows us to reject the null hypothesis. In this case, the p-value is extremely small (essentially zero), far below the 0.05 threshold.
+
+Since R \< 1 and the p-value is extremely small, we reject the null hypothesis.
+
+This means we have strong evidence to conclude that the distribution of conflicts is not randomly distributed. Instead, the distribution is clustered. Conflicts tend to be closer together than what would be expected under a random spatial distribution.
