@@ -265,7 +265,7 @@ In this section, you will learn how to compute the kernel density estimation (KD
 
 #### Automatic bandwidth selection method
 
-Note: Even though it is called "automatic bandwidth", they are considered fixed bandwidth methods (you calculate density with the same area throughout). Use adaptive bandwidth instead if you have highly skewed data. Use fixed bandwidth if you are comparing KDE between regions.
+Note: Even though it is called "automatic bandwidth", they are considered fixed bandwidth methods (you calculate density with the same area throughout). Use adaptive bandwidth instead if you have highly skewed data. Use fixed bandwidth if you are comparing KDE between regions.x\`
 
 The code chunk below computes a kernel density by using the following configurations of [*density()*](https://rdrr.io/cran/spatstat/man/density.ppp.html) of **spatstat**:
 
