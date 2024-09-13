@@ -2,8 +2,6 @@
 title: "Take Home Exercise 1"
 author: "Eugene Toh"
 date: "last-modified"
-execute:
-  freeze: true
 ---
 
 Geospatial analytics offer valuable insights into the patterns of armed conflict, enabling better understanding and response strategies. This study focuses on armed conflict events in Myanmar from January 2021 to June 2024, using data from the Armed Conflict Location & Event Data (ACLED) project. The analysis examines the spatial and temporal distribution of four key event types: Battles, Explosion/Remote Violence, Strategic Developments, and Violence Against Civilians. By investigating quarterly data, this study aims to reveal patterns in the conflict, contributing to a deeper understanding of the ongoing violence in Myanmar.
@@ -48,14 +46,6 @@ boundaries <- boundaries %>% st_transform(crs = 32647)
 st_crs(boundaries)
 ```
 
-Now, let's map out the conflict areas with regards to political violence in the year 2023:
-
-```{r}
-tmap_mode("view")
-conflict_data %>% filter(year == 2023 | event_type == "Political violence") %>% tm_shape() + tm_dots()
-tmap_mode("plot")
-```
-
 A horrifying amount, most of which seems to be clustered at the interior of Myanmar. Let's overlay an administrative district map to see where most of them are all located at:
 
 ```{r}
@@ -98,8 +88,6 @@ conflict_data_2022_q4 <- conflict_data %>% filter(event_date >= as.Date("2022-10
 The bandwidth in the context of KDE is a critical parameter that determines the level of smoothing applied to the data when estimating the density. It controls how much each data point influences the estimate of the density around it.
 :::
 ```
-
-Next, we need to convert the generic `sp` objects into `spatstat`'s `ppp` object.
 
 ```{r}
 conflict_data_2022_q1_ppp <- as.ppp(conflict_data_2022_q1)
@@ -173,10 +161,6 @@ conflictMYQ1_ppp <- conflict_data_2022_q1_ppp[national_boundaries_owin]
 conflictMYQ2_ppp <- conflict_data_2022_q2_ppp[national_boundaries_owin]
 conflictMYQ3_ppp <- conflict_data_2022_q3_ppp[national_boundaries_owin]
 conflictMYQ4_ppp <- conflict_data_2022_q4_ppp[national_boundaries_owin]
-```
-
-```{r}
-summary(conflictMYQ1_ppp)
 ```
 
 ```{r}
@@ -347,6 +331,8 @@ Tanintharyi continued to witness fighting, largely due to its strategic location
 #### Summary
 
 ```{r}
+#| fig-width: 12
+#| fig-height: 10
 q1_graph <- tm_shape(kde_conflictMYQ1_raster) + 
   tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
   tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
@@ -377,7 +363,11 @@ H1= The distribution of conflicts are not randomly distributed (the events are c
 The 95% confident interval will be used.
 
 ```{r}
-clarkevans.test(superimpose(conflictMYQ1_ppp, conflictMYQ2_ppp, conflictMYQ3_ppp, conflictMYQ4_ppp),
+conflictMY_ppp <- superimpose(conflictMYQ1_ppp, conflictMYQ2_ppp, conflictMYQ3_ppp, conflictMYQ4_ppp)
+```
+
+```{r}
+clarkevans.test(conflictMY_ppp,
                 correction="none",
                 clipregion="national_boundaries_owin",
                 alternative=c("clustered"),
@@ -391,3 +381,109 @@ The p-value represents the probability of observing such a clustered pattern und
 Since R \< 1 and the p-value is extremely small, we reject the null hypothesis.
 
 This means we have strong evidence to conclude that the distribution of conflicts is not randomly distributed. Instead, the distribution is clustered. Conflicts tend to be closer together than what would be expected under a random spatial distribution.
+
+## 2nd-order Spatial Point Patterns Analysis
+
+To do our 2nd order spatial point analysis, let's focus on the Sagaing, the state where the conflicts was the most fiercest in 2022.
+
+```{r}
+conflict_data_2022_sagaing <- conflict_data %>% filter(admin1 == "Sagaing") %>% filter(year == 2022)
+conflict_data_2022_sagaing_ppp <- as.ppp(conflict_data_2022_sagaing)
+```
+
+```{r}
+unitname(conflict_data_2022_sagaing_ppp)
+```
+
+The unit of the `ppp` function has not been set. Let's set it to metres based on the CRS.
+
+```{r}
+unitname(conflict_data_2022_sagaing_ppp) <- c("metre", "metres")
+```
+
+### F-Function
+
+The F function estimates the empty space function F(r) or its hazard rate h(r) from a point pattern in a window of arbitrary shape.
+
+The F-function measures the cumulative distribution of distances from a random point in the study region to the nearest point in the point pattern. Essentially, it answers the question: "given a random location in the study area, what is the probability that the nearest point in the pattern is within a distance `r`"?
+
+-   **x-axis (r):** Represents the distance from a random point in the study area to the nearest point in the pattern.
+
+-   **y-axis (F(r)):** Represents the cumulative probability that the distance from a random location to the nearest point is less than or equal to `r`.
+
+```{r}
+F_Sagaing = Fest(conflict_data_2022_sagaing_ppp)
+plot(F_Sagaing)
+```
+
+-   The solid line represents the empirical F-function (`F(r)`), which shows the distribution of distances from random points in the study area to the nearest observed point.
+
+-   The dashed line represents the theoretical F-function under complete spatial randomness (CSR). This line helps you compare the observed point pattern to a random point distribution.
+
+The small gradient in the F-function at short distances suggests that many random locations in the study area have no nearby conflict events. This implies that conflict events are sparse or dispersed at smaller scales.
+
+Around the 2000-meter mark, the F-function shows a more linear increase, indicating that random locations start to have a consistent distance to the nearest conflict event. Beyond this point, events are regularly spaced, implying a more uniform distribution.
+
+The initial slow rise suggests conflict events are far from random locations at small scales, while the linear rise beyond 2000 meters points to a consistent spacing pattern. This may reflect conflict clustering in specific areas, with gaps between them, and more predictable event proximity at larger distances.
+
+Conflict events may be concentrated in specific areas like towns, military bases, or strategic locations, with gaps in between, resulting in regular spacing at a larger scale. At shorter distances, fewer events occur, indicating less frequent conflict, but beyond around 2000 meters, events become more consistently distributed.
+
+#### Hypothesis testing
+
+To confirm the observed spatial patterns above, a hypothesis test will be conducted. The hypothesis and test are as follows:
+
+Ho = The distribution of conflicts at Sagaing are randomly distributed.
+
+H1= The distribution of conflicts at Sagaing are not randomly distributed.
+
+The null hypothesis will be rejected if p-value is smaller than alpha value of 0.001.
+
+```{r}
+F_Sagaing.csr <- envelope(conflict_data_2022_sagaing_ppp, Fest, nsim = 999)
+```
+
+```{r}
+plot(F_Sagaing.csr)
+```
+
+### L-Function
+
+The K-function measures the number of events found up to a given distance of any particular event.
+
+It answers the question: "how many additional points are found within a distance `r` from an average point, compared to what would be expected if the points were randomly distributed"?
+
+The L-function is a transformation of the K-function designed to make it easier to interpret the results of spatial point pattern analysis. The L-function is often used because it linearizes the K-function under the assumption of complete spatial randomness (CSR), making deviations from randomness easier to detect.
+
+**Linear Under CSR:** Under complete spatial randomness (CSR), the L-function should be approximately equal to the distance `r`.
+
+-   **Clustering:** If the observed is above the line, it indicates clustering at distance `r`. There are more points close to each other than expected under CSR.
+
+-   **Dispersion:** If the observed is below the line, it indicates regularity or dispersion at distance `r`. The points are more evenly spaced than expected under CSR.
+
+```{r}
+L_ck = Lest(conflict_data_2022_sagaing_ppp, correction = "Ripley")
+plot(L_ck, . -r ~ r, 
+     ylab= "L(d)-r", xlab = "d(m)", xlim=c(0,50000))
+```
+
+The decrease in the K-function up to 5000 meters suggests point dispersion at smaller distances. The sharp increase at 5000 meters indicates the start of clustering, with local clusters becoming more apparent. The gradual rise between 5000 and 25000 meters reflects increasing clustering across larger areas, possibly indicating regional-scale grouping of points, like towns or strategic locations. The second sharp increase at 25,000 meters suggests larger clusters or groups of clusters, indicating broader patterns in how the points are distributed. Beyond 25,000 meters, clustering continues across even larger distances, pointing to an overall structure where points are organized into regional clusters. Beyond 25000 meters, clustering continues across even larger distances, pointing to an overall structure where points are organized into regional clusters.
+
+The regular spacing up to 5000 meters could be due to geographic barriers or strategic factors preventing clustering. The sharp increase at 5000 meters suggests localized clusters, possibly in towns or military zones, while the second increase at 25000 meters reflects a larger, regional-scale clustering. Beyond 25000 meters, the upward trend indicates that these clusters are part of a broader pattern, with conflict events in different regions still showing interdependence over larger distances.
+
+#### Hypothesis testing
+
+To confirm the observed spatial patterns above, a hypothesis test will be conducted. The hypothesis and test are as follows:
+
+Ho = The distribution of conflicts at Sagaing are randomly distributed.
+
+H1= The distribution of conflicts at Sagaing are not randomly distributed.
+
+The null hypothesis will be rejected if p-value if smaller than alpha value of 0.001.
+
+```{r}
+L_Sagaing.csr <- envelope(conflict_data_2022_sagaing_ppp, Lest, nsim = 99, rank = 1, glocal=TRUE)
+```
+
+```{r}
+plot(L_Sagaing.csr, . - r ~ r, xlab="d", ylab="L(d)-r", xlim=c(0,50000))
+```

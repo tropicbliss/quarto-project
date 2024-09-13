@@ -390,8 +390,6 @@ The K-function compares the observed number of points within a certain distance 
 
 -   **y-axis (K(r)):** Represents the cumulative count of neighboring points within distance `r`, adjusted for the density of the points.
 
-<!-- -->
-
 -   **CSR (Complete Spatial Randomness) Line:** If the points are randomly distributed, the K-function typically follows a linear relationship with distance `r`.
 
 -   **Above the CSR Line (K(r) \> CSR):** If the observed K-function curve is above the CSR line, it indicates clustering, meaning there are more points within distance `r` than expected under randomness.
