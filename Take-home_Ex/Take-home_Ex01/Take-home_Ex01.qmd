@@ -9,7 +9,7 @@ Geospatial analytics offer valuable insights into the patterns of armed conflict
 To start off, let's begin by importing all the necessary libraries:
 
 ```{r}
-pacman::p_load(sf, tidyverse, tmap, spatstat, raster)
+pacman::p_load(sf, tidyverse, tmap, spatstat, raster, sparr)
 ```
 
 Now that we have done so, let's load the necessary combat data from ACLED (note that due to API limitations I am only able to get data from a certain starting date):
@@ -487,3 +487,92 @@ L_Sagaing.csr <- envelope(conflict_data_2022_sagaing_ppp, Lest, nsim = 99, rank 
 ```{r}
 plot(L_Sagaing.csr, . - r ~ r, xlab="d", ylab="L(d)-r", xlim=c(0,50000))
 ```
+
+## Quarterly spatio-temporal KDE
+
+A spatio-temporal point process (also called space-time or spatial-temporal point process) is a random collection of points, where each point represents the time and location of an event. In this section, we are going to take a deep dive into the conflict occurring at Sagaing.
+
+### Import data
+
+```{r}
+townships <- st_read("data", layer = "mmr_polbnda_adm3_250k_mimu_1") %>% st_transform(crs = 32647) %>% filter(ST == "Sagaing")
+```
+
+### Plotting out maps
+
+Now, we need to extract out the month from the dates in each conflict and transform it into yearly quarters (from 1 to 4). Take note that we define a custom function called `get_quarter` to make our lives easier. We then only select out the quarter and the geometry to make quarter the marks value for the `as.ppp` function to interpret the data correctly.
+
+```{r}
+get_quarter <- function(month) {
+  return ((month + 2) %/% 3)
+}
+
+conflict_quarter <- conflict_data_2022_sagaing %>% mutate(quarter = month(event_date) %>% get_quarter()) %>% dplyr::select(quarter)
+```
+
+#### Creating `owin` object
+
+We first convert the `conflict_quarter` dataset into a `ppp` using the `as.ppp` function. The `ppp` object represents a point pattern, which includes the locations of conflict events and which quarter each conflict took place. We then convert the `townships` dataset into an observation window (owin) using the `as.owin` function. An `owin` object defines a spatial window, i.e., the region of interest where spatial analysis is performed (in this case, the township boundaries).
+
+```{r}
+conflict_quarter_ppp <- as.ppp(conflict_quarter)
+townships_owin <- as.owin(townships)
+combined_owin <- conflict_quarter_ppp[townships_owin]
+```
+
+#### Calculating STKDE
+
+We then use `spattemp.density` from the `sparr` library to perform a **spatio-temporal kernel density estimation** (KDE). This would estimate how the density of the events (like conflicts) changes over both space and time, smoothing the point pattern (`combined_owin`) using a kernel function.
+
+```{r}
+st_kde <- spattemp.density(combined_owin)
+```
+
+#### Doing the deed
+
+We then create a multi-panel plot layout and visualise spatio-temporal kernel density estimation (KDE) results across different time intervals, while overlaying township boundaries and labeling them on each plot. This allows us to better analyse conflict hotspots in detail.
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10
+par(mfcol=c(2,2))
+tims <- 1:4
+for(i in tims){
+  plot(st_kde, i,
+       override.par=FALSE,
+       fix.range=TRUE,
+       main=paste("KDE at quarter",i))
+  plot(st_geometry(townships), add=TRUE) # overlap the polygons of townships on top
+  text(st_coordinates(st_centroid(townships)), labels=townships$TS, cex=0.5, col="white") # add text at the centroids of each polygon
+}
+```
+
+In quarter 1, conflict is mainly situated around the township of Salingyi, with smaller pockets around Kale and at the meeting point of Tabayin and Khin-U. Salingyi is home to the controversial Letpadaung copper mine, a frequent site of protests and conflict due to land disputes and environmental issues. Its economic significance and military ties make it a target for insurgents. Sagaing has been a key resistance area against the military junta, especially after the 2021 coup, with People's Defense Forces (PDFs) and ethnic armed groups active in the region. Kale and the Tabayin-Khin-U area are known resistance centers, with smaller conflicts likely linked to local PDFs and clashes with military forces.
+
+In quarter 2, conflict around the Tabayin-Khin-U region died down. In quarter 3, the conflict at Kale and Salingyi seems to be dying down, but in quarter 4 it flared back up again, but thankfully we have not seen a dramatic resurgance at Kale. Smaller scale conflicts have also started to flare up around Sagaing and Wetlet townships. In Sagaing and Wetlet townships, smaller-scale conflicts suggest the spread of insurgency tactics. Mobile groups of PDFs may be using hit-and-run tactics or localized skirmishes, particularly where the military is stretched thin. Resistance forces could be shifting to smaller engagements across a broader area, targeting government forces or infrastructure.
+
+### Animating the conflict in Sagaing for 2022
+
+Just for curiosity's sake, we are also going to analyse the trajectory of the conflict in detail via an animation by bringing in the `animation` library which creates a GIF and embeds it on this HTML page.
+
+We are going to extract the week number for each conflict from 1 to 52 (2022 is not a leap year so it is not 53). We then only select the week and the geometry in the SFO such that it will choose the correct marks value. Next, we convert it first to a `ppp` object and then to an `owin` object as per usual. We combine the points and the geometry, calculate STKDE, and plot a separate graph for each week.
+
+The reason why I used weeks and not days is that the data we have does not track how long a conflict occurs. Hence according to our maps, a conflict could be reported one day and gone at the next, which could be misleading. Using weeks instead of days makes it less granular.
+
+```{r}
+pacman::p_load(animation)
+conflict_week <- conflict_data_2022_sagaing %>% mutate(week = week(event_date)) %>% dplyr::select(week)
+conflict_week_ppp <- as.ppp(conflict_week)
+combined_owin <- conflict_week_ppp[townships_owin]
+st_kde <- spattemp.density(combined_owin)
+saveGIF({
+  tims <- 1:52
+  for(i in tims){
+    plot(st_kde, i, override.par=FALSE, fix.range=TRUE, main=paste("KDE at week",i))
+    plot(st_geometry(townships), add=TRUE)
+    text(st_coordinates(suppressWarnings(st_centroid(townships))), labels=townships$TS, col="white")
+}
+}, movie.name = "myanmar_conflict.gif", interval = 0.5, nmax = 30, ani.width = 1920, ani.height = 1080)
+```
+
+![Myanmar Conflict Animation](myanmar_conflict.gif)
