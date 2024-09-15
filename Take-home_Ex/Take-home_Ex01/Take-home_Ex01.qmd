@@ -2,6 +2,7 @@
 title: "Take Home Exercise 1"
 author: "Eugene Toh"
 date: "last-modified"
+freeze: true
 ---
 
 Geospatial analytics offer valuable insights into the patterns of armed conflict, enabling better understanding and response strategies. This study focuses on armed conflict events in Myanmar from January 2021 to June 2024, using data from the Armed Conflict Location & Event Data (ACLED) project. The analysis examines the spatial and temporal distribution of four key event types: Battles, Explosion/Remote Violence, Strategic Developments, and Violence Against Civilians. By investigating quarterly data, this study aims to reveal patterns in the conflict, contributing to a deeper understanding of the ongoing violence in Myanmar.
@@ -549,6 +550,8 @@ for(i in tims){
 
 In quarter 1, conflict is mainly situated around the township of Salingyi, with smaller pockets around Kale and at the meeting point of Tabayin and Khin-U. Salingyi is home to the controversial Letpadaung copper mine, a frequent site of protests and conflict due to land disputes and environmental issues. Its economic significance and military ties make it a target for insurgents. Sagaing has been a key resistance area against the military junta, especially after the 2021 coup, with People's Defense Forces (PDFs) and ethnic armed groups active in the region. Kale and the Tabayin-Khin-U area are known resistance centers, with smaller conflicts likely linked to local PDFs and clashes with military forces.
 
+Sagaing Region, largely Bamar, borders Chin and Shan states, contributing to tensions from neighboring ethnic conflicts. Local grievances, like land rights issues, may have fueled resistance in Salingyi, while the Tabayin-Khin-U area is strategic for transportation routes, crucial for both the military and insurgents. Sagaing’s terrain favors insurgents, allowing for sustained clashes, especially near Kale, close to Chin State's conflict zones. The Myanmar military likely targeted these areas due to their strategic importance and the presence of resistance forces.
+
 In quarter 2, conflict around the Tabayin-Khin-U region died down. In quarter 3, the conflict at Kale and Salingyi seems to be dying down, but in quarter 4 it flared back up again, but thankfully we have not seen a dramatic resurgance at Kale. Smaller scale conflicts have also started to flare up around Sagaing and Wetlet townships. In Sagaing and Wetlet townships, smaller-scale conflicts suggest the spread of insurgency tactics. Mobile groups of PDFs may be using hit-and-run tactics or localized skirmishes, particularly where the military is stretched thin. Resistance forces could be shifting to smaller engagements across a broader area, targeting government forces or infrastructure.
 
 ### Animating the conflict in Sagaing for 2022
@@ -576,3 +579,133 @@ saveGIF({
 ```
 
 ![Myanmar Conflict Animation](myanmar_conflict.gif)
+
+## 2nd Order Spatio-temporal Point Patterns Analysis
+
+Now let's shift our attention to Yangon. Yangon is the largest city in Myanmar and it would be interesting to find out the relationship between the road networks in the city and conflict events. We could have also chosen to analyse river or railway networks in Yangon, but I personally feel that there is not enough of them to give us an accurate representation.
+
+```{r}
+yangon_bounds <- boundaries %>% filter(ST == "Yangon")
+railways <- st_read("data", layer = "mmr_rlwl_250k_mimu_1") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING") %>% filter(Div_Name == "Yangon")
+railways <- st_intersection(railways, yangon_bounds) %>% st_cast("LINESTRING")
+rivers <- st_read("data", layer = "myanmar_river_network_250k") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING")
+rivers <- st_intersection(rivers, yangon_bounds) %>% st_cast("LINESTRING")
+tmap_mode("view")
+tm_shape(rivers) +
+  tm_lines()
+tm_shape(railways) +
+  tm_lines()
+tmap_mode("plot")
+```
+
+### Importing data
+
+```{r}
+yangon_bounds <- boundaries %>% filter(ST == "Yangon")
+class(yangon_bounds)
+```
+
+Now let's bring in an extra dependency, `spNetwork` which is going to help us calculate network KDE.
+
+Network KDE (NKDE) is essentially a variation of KDE that applies to events occuring alongside networks like roads or railways. With NKDE, we can calculate and visualise the density of events happening right alongside networks.
+
+```{r}
+pacman::p_load(spNetwork)
+```
+
+### Data importing
+
+Now that we are done with the import, we are going to filter conflict data to look for conflicts that happened in 2022 and in Yangon.
+
+```{r}
+conflict_data_2022 <- conflict_data %>% filter(year == 2022 & admin1 == "Yangon")
+```
+
+Now that we have conflict points, let's bring in the road network data.
+
+```{r}
+roads <- st_read("data", layer = "mmr_rdsl_mimu_250k") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING")
+```
+
+Notice that we are casting each row to a `LineString`. This is going to be important later on as we cannot directly work with `MultiLineString`s which is what the Shapefile gives us.
+
+### Data wrangling
+
+Notice that we have imported the road network for the entire Myanmar. To keep it within Yangon, we are going to use `st_intersection` to chop off any parts of the road that is not within the state.
+
+```{r}
+roads <- st_intersection(roads, yangon_bounds)
+glimpse(st_geometry(roads))
+```
+
+Just by using `st_intersection`, we get back an `sfc_GEOMETRY` object (we get a mix of `MultiLineString`s and `LineString`s), while what we want is `sfc_LINESTRING`.
+
+```{r}
+roads <- roads %>% st_cast("LINESTRING")
+class(st_geometry(roads))
+```
+
+### Calculating NKDE
+
+We first have to calculate lixels and samples.
+
+What are lixels? Well, you can think of lixels as individual segments of a line of fixed length. It is useful for calculating density estimation along a network. This together with samples, which represent locations where the kernel density is calculated can give us a nice visualisation of density along a network.
+
+```{r}
+lixels_roads <- lixelize_lines(roads, 700, mindist = 375)
+samples_roads <- lines_center(lixels_roads)
+```
+
+There are many knobs we can configure here, but let's talk about one of the most important aspects, the method.
+
+```{r}
+densities_roads <- nkde(roads, 
+                  events = conflict_data_2022,
+                  w = rep(1, nrow(conflict_data_2022)),
+                  samples = samples_roads,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, 
+                  sparse = TRUE,
+                  verbose = FALSE)
+```
+
+Now, we need to scale the density in such a way that it can be rendered by `tmap`.
+
+```{r}
+samples_roads$density <- densities_roads
+lixels_roads$density <- densities_roads
+samples_roads$density <- samples_roads$density * 1000
+lixels_roads$density <- lixels_roads$density * 1000
+```
+
+```{r}
+tmap_mode('view')
+tm_shape(lixels_roads)+
+  tm_lines(col="density")+
+tm_shape(conflict_data_2022)+
+  tm_dots()
+tmap_mode('plot')
+```
+
+As you can see, the main cluster of conflicts occur at Downtown Yangon. Many of these conflicts were triggered by homemade explosives made by guerrilla groups. As urban warfare became impractical, resistance forces shifted to targeting SAC-aligned officials, with 367 SAC-appointed officials assassinated between February 2021 and February 2022. Resistance also targeted the homes of SAC pilots in Yangon in retaliation for airstrikes on civilians. In September 2022, anti-SAC guerillas assassinated retired Brigadier General Ohn Thwin, mentor to SAC vice-chairman Soe Win, prompting increased security for top SAC officials.
+
+```{r}
+tmap_mode('view')
+tm_shape(conflict_data_2022) +
+  tm_dots(col = "sub_event_type",
+          palette = "Set1",
+          size = 0.1,
+          title = "Conflict Types") +
+tm_shape(roads) +
+  tm_lines()
+tmap_mode("plot")
+```
+
+There is also a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.
