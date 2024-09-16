@@ -586,9 +586,9 @@ Now let's shift our attention to Yangon. Yangon is the largest city in Myanmar a
 
 ```{r}
 yangon_bounds <- boundaries %>% filter(ST == "Yangon")
-railways <- st_read("data", layer = "mmr_rlwl_250k_mimu_1") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING") %>% filter(Div_Name == "Yangon")
+railways <- st_read("data", layer = "mmr_rlwl_250k_mimu_1") %>% st_transform(crs = 32647) %>% filter(Div_Name == "Yangon")
 railways <- st_intersection(railways, yangon_bounds) %>% st_cast("LINESTRING")
-rivers <- st_read("data", layer = "myanmar_river_network_250k") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING")
+rivers <- st_read("data", layer = "myanmar_river_network_250k") %>% st_transform(crs = 32647)
 rivers <- st_intersection(rivers, yangon_bounds) %>% st_cast("LINESTRING")
 tmap_mode("view")
 tm_shape(rivers) +
@@ -624,7 +624,7 @@ conflict_data_2022 <- conflict_data %>% filter(year == 2022 & admin1 == "Yangon"
 Now that we have conflict points, let's bring in the road network data.
 
 ```{r}
-roads <- st_read("data", layer = "mmr_rdsl_mimu_250k") %>% st_transform(crs = 32647) %>% st_cast("LINESTRING")
+roads <- st_read("data", layer = "mmr_rdsl_mimu_250k") %>% st_transform(crs = 32647)
 ```
 
 Notice that we are casting each row to a `LineString`. This is going to be important later on as we cannot directly work with `MultiLineString`s which is what the Shapefile gives us.
@@ -708,4 +708,4 @@ tm_shape(roads) +
 tmap_mode("plot")
 ```
 
-There is also a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.
+There is a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.

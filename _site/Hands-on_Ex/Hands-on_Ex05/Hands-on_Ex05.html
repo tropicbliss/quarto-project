@@ -332,6 +332,7 @@ dbl (27): avg_wage, deposite, FAI, Gov_Rev, Gov_Exp, GDP, GDPPC, GIO, Loan, ...
 </div>
 </div>
 </div>
+<p>Remember, spatial lag is rarely used to estimate data. It is typically used to derive a clear pattern from existing data.</p>
 </section>
 <section id="computing-contiguity-weight-matrices" class="level2">
 <h2 class="anchored" data-anchor-id="computing-contiguity-weight-matrices">Computing contiguity weight matrices</h2>
@@ -507,8 +508,8 @@ Link number distribution:
  - attr(*, "snap")= num 9e-08
  - attr(*, "sym")= logi TRUE
  - attr(*, "ncomp")=List of 2
-  ..$ nc     : int 1
-  ..$ comp.id: int [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+  ..$ nc     : num 1
+  ..$ comp.id: num [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
 </div>
 </div>
 <section id="visualising-contiguity-weights" class="level3">
@@ -694,11 +695,12 @@ Average number of links: 3.681818 </code></pre>
  - attr(*, "nbtype")= chr "distance"
  - attr(*, "sym")= logi TRUE
  - attr(*, "ncomp")=List of 2
-  ..$ nc     : int 1
-  ..$ comp.id: int [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+  ..$ nc     : num 1
+  ..$ comp.id: num [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
 </div>
 </div>
 <p>This returns a list of the indices of nearest neighbours for each point based on a given distance. Don’t worry about the numbers surrounded by square brackets, they just tell you the indexes start from 1 onwards.</p>
+<p>This has the problem of a centroid being less effective when the polygon is larger.</p>
 </section>
 <section id="plotting-fixed-distance-weight-matrix" class="level3">
 <h3 class="anchored" data-anchor-id="plotting-fixed-distance-weight-matrix">Plotting fixed distance weight matrix</h3>
@@ -831,8 +833,8 @@ Non-symmetric neighbours list</code></pre>
  - attr(*, "knn-k")= num 6
  - attr(*, "class")= chr "nb"
  - attr(*, "ncomp")=List of 2
-  ..$ nc     : int 1
-  ..$ comp.id: int [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+  ..$ nc     : num 1
+  ..$ comp.id: num [1:88] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
 </div>
 </div>
 </section>
