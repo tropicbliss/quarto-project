@@ -42,6 +42,8 @@ gdppc <- qtm(hunan, "GDPPC")
 tmap_arrange(basemap, gdppc, asp=1, ncol=2)
 ```
 
+Remember, spatial lag is rarely used to estimate data. It is typically used to derive a clear pattern from existing data.
+
 ## Computing contiguity weight matrices
 
 In R, the function `poly2nb()` is part of the **spdep** package, which is used for spatial data analysis. The `poly2nb()` function takes in an SFO and creates a neighbor list for a set of spatial polygons. `poly2nb()` determines which polygons are "neighbors" based on whether they touch each other (contiguity). The output is a neighbor object (class `nb`) where each polygon is assigned a list of the IDs of its neighboring polygons.
@@ -96,8 +98,7 @@ str(wm_q)
 
 ### Visualising contiguity weights
 
-A connectivity graph takes a point and displays a line to each neighboring point. We are working with polygons at the moment, so we will need to get points in order to make our connectivity graphs. The most typically method for this will be polygon centroids. We will
-calculate these in the sf package before moving onto the graphs.
+A connectivity graph takes a point and displays a line to each neighboring point. We are working with polygons at the moment, so we will need to get points in order to make our connectivity graphs. The most typically method for this will be polygon centroids. We will calculate these in the sf package before moving onto the graphs.
 
 ```{r}
 longitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[1]])
@@ -156,6 +157,8 @@ str(wm_d62)
 ```
 
 This returns a list of the indices of nearest neighbours for each point based on a given distance. Don't worry about the numbers surrounded by square brackets, they just tell you the indexes start from 1 onwards.
+
+This has the problem of a centroid being less effective when the polygon is larger.
 
 ### Plotting fixed distance weight matrix
 
