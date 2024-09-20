@@ -247,10 +247,10 @@ kde_conflictMYQ1_raster
 Notice that the `crs` property is NA. We need to set it to an appropriate value.
 
 ```{r}
-projection(kde_conflictMYQ1_raster) <- CRS("+init=EPSG:32647")
-projection(kde_conflictMYQ2_raster) <- CRS("+init=EPSG:32647")
-projection(kde_conflictMYQ3_raster) <- CRS("+init=EPSG:32647")
-projection(kde_conflictMYQ4_raster) <- CRS("+init=EPSG:32647")
+projection(kde_conflictMYQ1_raster) <- CRS("+init=EPSG:32647 +units=km")
+projection(kde_conflictMYQ2_raster) <- CRS("+init=EPSG:32647 +units=km")
+projection(kde_conflictMYQ3_raster) <- CRS("+init=EPSG:32647 +units=km")
+projection(kde_conflictMYQ4_raster) <- CRS("+init=EPSG:32647 +units=km")
 ```
 
 Now, it's finally time to plot the data.
@@ -258,13 +258,11 @@ Now, it's finally time to plot the data.
 #### 1st quarter
 
 ```{r}
-raster_map <- tm_shape(kde_conflictMYQ1_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
-boundary_map <- tm_shape(boundaries) +
-  tm_borders() +
-  tm_text("ST", size = 0.3, col = "blue")
-tmap_arrange(raster_map, boundary_map, ncol=2)
+tm_shape(kde_conflictMYQ1_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE) +
+  tm_shape(boundaries) +
+  tm_text("ST", size = 0.3, col = "white")
 ```
 
 The map reveals that much of the conflict occurred in Sagaing and Magway, with localized fighting in Shan (South) and Kayah, and another significant hotspot in Yangon. This aligns with news reports indicating that during the first quarter of 2022, the Myanmar conflict was primarily concentrated in Rakhine, Chin, Sagaing, and Magway regions. Sagaing and Magway, in particular, saw numerous battles involving the People’s Defence Forces (PDF), while Chin State experienced substantial conflict due to its proximity to India and the presence of active ethnic insurgent groups. Meanwhile, Rakhine State remained a key battleground for clashes between the Arakan Army (AA) and the Tatmadaw.
@@ -278,13 +276,11 @@ In Shan (South) and Kayah, localized conflicts arose due to territorial disputes
 #### 2nd quarter
 
 ```{r}
-raster_map <- tm_shape(kde_conflictMYQ2_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
-boundary_map <- tm_shape(boundaries) +
-  tm_borders() +
-  tm_text("ST", size = 0.3, col = "blue")
-tmap_arrange(raster_map, boundary_map, ncol=2)
+tm_shape(kde_conflictMYQ2_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE) +
+  tm_shape(boundaries) +
+  tm_text("ST", size = 0.3, col = "white")
 ```
 
 In the second quarter, fighting became more concentrated in Sagaing, Magway, and Chin State. In particular, the conflict in Chin State intensified as clashes escalated between the Tatmadaw and ethnic insurgent groups, including the Chin National Front (CNF) and local PDF forces. Chin State's strategic location near the Indian border made it a key theater of conflict, prompting increased military offensives against insurgent strongholds. This led to more intense military operations and a rise in human rights abuses, such as arbitrary detentions and targeted attacks on civilians.
@@ -296,13 +292,11 @@ Tanintharyi experienced a rise in reported conflicts during the second quarter. 
 #### 3rd quarter
 
 ```{r}
-raster_map <- tm_shape(kde_conflictMYQ3_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
-boundary_map <- tm_shape(boundaries) +
-  tm_borders() +
-  tm_text("ST", size = 0.3, col = "blue")
-tmap_arrange(raster_map, boundary_map, ncol=2)
+tm_shape(kde_conflictMYQ3_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE) +
+  tm_shape(boundaries) +
+  tm_text("ST", size = 0.3, col = "white")
 ```
 
 Between quarters 2 and 3, the conflict in Shan (South) and Kayah significantly decreased, while fighting in Yangon returned to the intensity seen in quarter 1. The People's Defence Forces (PDF) and other resistance groups likely resumed urban operations, including sabotage, bombings, and targeted assassinations, directed at military personnel and government officials. This resurgence indicates a renewal of urban resistance despite heightened military crackdowns. Meanwhile, Rakhine State experienced a sharp rise in reported conflicts. The Arakan Army (AA) intensified its efforts against the Tatmadaw, seeking greater control over the region. The AA's renewed activity led to more frequent clashes, with the fighting spreading to more densely populated areas, worsening the humanitarian crisis.
@@ -310,13 +304,11 @@ Between quarters 2 and 3, the conflict in Shan (South) and Kayah significantly d
 #### 4th quarter
 
 ```{r}
-raster_map <- tm_shape(kde_conflictMYQ4_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
-boundary_map <- tm_shape(boundaries) +
-  tm_borders() +
-  tm_text("ST", size = 0.3, col = "blue")
-tmap_arrange(raster_map, boundary_map, ncol=2)
+tm_shape(kde_conflictMYQ4_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE) +
+  tm_shape(boundaries) +
+  tm_text("ST", size = 0.3, col = "white")
 ```
 
 In quarter 4, fighting became more localized in Sagaing, while conflict in Chin State subsided. However, hostilities persisted in Rakhine, Yangon, and Tanintharyi.
@@ -334,19 +326,55 @@ Tanintharyi continued to witness fighting, largely due to its strategic location
 ```{r}
 #| fig-width: 12
 #| fig-height: 10
+#| eval: false
+pacman::p_load(gifski)
 q1_graph <- tm_shape(kde_conflictMYQ1_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, main.title = "Conflict Intensity - Q1") +
+  tm_shape(boundaries) +
+  tm_text("ST", col = "white")
 q2_graph <- tm_shape(kde_conflictMYQ2_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, main.title = "Conflict Intensity - Q2") +
+  tm_shape(boundaries) +
+  tm_text("ST", col = "white")
 q3_graph <- tm_shape(kde_conflictMYQ3_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, main.title = "Conflict Intensity - Q3") +
+  tm_shape(boundaries) +
+  tm_text("ST", col = "white")
 q4_graph <- tm_shape(kde_conflictMYQ4_raster) + 
-  tm_raster("layer", palette = "viridis", title = "Conflict intensity") +
-  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, legend.title.size = 1)
-tmap_arrange(q1_graph, q2_graph, q3_graph, q4_graph, asp=2, ncol=2)
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE, main.title = "Conflict Intensity - Q4") +
+  tm_shape(boundaries) +
+  tm_text("ST", col = "white")
+tmap_animation(
+  list(q1_graph, q2_graph, q3_graph, q4_graph),
+  delay = 100,
+  filename = "raster_animation.gif",
+  width = 1080,
+  height = 1920
+)
+```
+
+![Conflict Intensity Animation](raster_animation.gif)
+
+Since all the raster's represent the same area in different periods of time, we are going to create a `RasterStack` to visualise the conflict over an OpenStreetMap view with `tmap`.
+
+```{r}
+conflictMY_raster <- stack(kde_conflictMYQ1_raster, kde_conflictMYQ2_raster, kde_conflictMYQ3_raster, kde_conflictMYQ4_raster)
+class(conflictMY_raster)
+```
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10
+tmap_mode("view")
+tm_shape(conflictMY_raster) + 
+  tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
+  tm_basemap("OpenStreetMap") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+tmap_mode("plot")
 ```
 
 ### Is the conflict clustered or dispersed?
@@ -516,8 +544,8 @@ conflict_quarter <- conflict_data_2022_sagaing %>% mutate(quarter = month(event_
 We first convert the `conflict_quarter` dataset into a `ppp` using the `as.ppp` function. The `ppp` object represents a point pattern, which includes the locations of conflict events and which quarter each conflict took place. We then convert the `townships` dataset into an observation window (owin) using the `as.owin` function. An `owin` object defines a spatial window, i.e., the region of interest where spatial analysis is performed (in this case, the township boundaries).
 
 ```{r}
-conflict_quarter_ppp <- as.ppp(conflict_quarter)
-townships_owin <- as.owin(townships)
+conflict_quarter_ppp <- rescale(as.ppp(conflict_quarter), s = 1000, unitname = c("km", "kilometers"))
+townships_owin <- rescale(as.owin(townships), s = 1000, unitname = c("km", "kilometers"))
 combined_owin <- conflict_quarter_ppp[townships_owin]
 ```
 
@@ -529,23 +557,54 @@ We then use `spattemp.density` from the `sparr` library to perform a **spatio-te
 st_kde <- spattemp.density(combined_owin)
 ```
 
-#### Doing the deed
+#### Plotting the results
 
 We then create a multi-panel plot layout and visualise spatio-temporal kernel density estimation (KDE) results across different time intervals, while overlaying township boundaries and labeling them on each plot. This allows us to better analyse conflict hotspots in detail.
 
 ```{r}
 #| fig-width: 12
 #| fig-height: 10
-par(mfcol=c(2,2))
-tims <- 1:4
-for(i in tims){
-  plot(st_kde, i,
-       override.par=FALSE,
-       fix.range=TRUE,
-       main=paste("KDE at quarter",i))
-  plot(st_geometry(townships), add=TRUE) # overlap the polygons of townships on top
-  text(st_coordinates(st_centroid(townships)), labels=townships$TS, cex=0.5, col="white") # add text at the centroids of each polygon
+# Convert townships to sf object (if not already in sf format)
+townships_sf <- st_as_sf(townships)
+
+# Set tmap mode to "view" to display interactive maps in Quarto
+tmap_mode("view")
+
+# Loop through the quarters and display KDE for each time slice
+tims <- 1:4  # Time indices corresponding to each quarter
+for (i in tims) {
+  
+  # Extract the spatial KDE slice for the i-th quarter
+  kde_slice <- st_kde$z[[i]]  # Assuming st_kde has a list of rasters for each time step
+  
+  # Convert KDE slice to RasterLayer
+  kde_raster <- raster(kde_slice)
+  
+  # Ensure the raster has correct extent and CRS
+  extent(kde_raster) <- st_bbox(townships_sf)  # Set bounding box to match townships
+  crs(kde_raster) <- st_crs(townships_sf)$proj4string  # Match CRS
+  
+  # Create the tmap plot
+  tm <- tm_shape(kde_raster) +
+    tm_raster("layer", title = paste("KDE at quarter", i), style = "cont", legend.show = TRUE, alpha = 0.7) +  # KDE layer
+    
+    # Add township borders
+    tm_shape(townships_sf) + 
+    tm_borders(col = "black", lwd = 1) + 
+    
+    # Add township labels at centroids
+    tm_text("TS", size = 0.5, col = "blue") +
+    
+    # Overlay OpenStreetMap as the basemap
+    tm_basemap(server = "OpenStreetMap") + 
+    
+    # Layout settings
+    tm_layout(main.title = paste("KDE at quarter", i), legend.outside = TRUE)
+  
+  # Print the map to display it in Quarto
+  print(tm)
 }
+tmap_mode("plot")
 ```
 
 In quarter 1, conflict is mainly situated around the township of Salingyi, with smaller pockets around Kale and at the meeting point of Tabayin and Khin-U. Salingyi is home to the controversial Letpadaung copper mine, a frequent site of protests and conflict due to land disputes and environmental issues. Its economic significance and military ties make it a target for insurgents. Sagaing has been a key resistance area against the military junta, especially after the 2021 coup, with People's Defense Forces (PDFs) and ethnic armed groups active in the region. Kale and the Tabayin-Khin-U area are known resistance centers, with smaller conflicts likely linked to local PDFs and clashes with military forces.
@@ -562,10 +621,14 @@ We are going to extract the week number for each conflict from 1 to 52 (2022 is 
 
 The reason why I used weeks and not days is that the data we have does not track how long a conflict occurs. Hence according to our maps, a conflict could be reported one day and gone at the next, which could be misleading. Using weeks instead of days makes it less granular.
 
+Note that `eval` is set to `false` since `saveGIF` requires the `imagemagick` system library and not every computer has it installed.
+
 ```{r}
+#| eval: false
 pacman::p_load(animation)
 conflict_week <- conflict_data_2022_sagaing %>% mutate(week = week(event_date)) %>% dplyr::select(week)
 conflict_week_ppp <- as.ppp(conflict_week)
+townships_owin <- as.owin(townships)
 combined_owin <- conflict_week_ppp[townships_owin]
 st_kde <- spattemp.density(combined_owin)
 saveGIF({
@@ -709,3 +772,11 @@ tmap_mode("plot")
 ```
 
 There is a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.
+
+## Conclusion
+
+The geospatial analysis of the Myanmar conflict from January 2021 to June 2024 reveals key patterns in the distribution of violence. Focusing on Battles, Explosion/Remote violence, Strategic developments, and Violence against civilians, Kernel Density Estimation (KDE) highlighted intense conflict clustering in Rakhine, Chin, Sagaing, and Kayah states.
+
+While regions like Yangon and Shan (South)/Kayah experienced temporary reductions in violence, they saw a resurgence in later periods. The conflict's spread into Tanintharyi and Sagaing suggests an escalation into previously less-affected areas. Yangon saw sporadic but notable bursts of violence, reflecting evolving urban warfare and insurgent tactics.
+
+Overall, the spatial analysis underscores the complexity of the conflict, with violence intensifying in certain areas while abating in others. The regional variation in conflict dynamics highlights the importance of localized peacebuilding efforts and strategic responses tailored to each area’s unique conflict drivers. The results provide valuable insights into how the conflict is evolving and the geographic factors influencing its trajectory, offering a foundation for more targeted humanitarian interventions, security responses, and conflict resolution efforts in Myanmar.
