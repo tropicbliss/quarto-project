@@ -69,7 +69,7 @@ Now we are going to apply Kernel Density Estimation (KDE) to conflict events for
 
 -   The coup started in February 2021. While it might be interesting to analyse the slow growth in conflicts over time, the data is not representative of the Myanmar conflict as a whole.
 
--   In 2022, the political and military landscape had largely stabilized after the initial shock of the coup in 2021. The armed resistance led by various ethnic armed organizations (EAOs) and the People's Defense Forces (PDFs) was more organized and widespread.
+-   In 2022, the political and military landscape had largely stabilized after the initial shock of the coup in 2021. The armed resistance led by various ethnic armed organizations (EAOs) and the People's Defense Forces (PDFs) was more organized and widespread. Of course, despite the apparent stabilization in 2022, the situation remains volatile. The junta's crackdown on dissent, targeted killings, and the increasing involvement of ethnic armed organisations have contributed to ongoing instability.
 
 ### Data extraction and filtering
 
@@ -645,7 +645,7 @@ saveGIF({
 
 ## 2nd Order Spatio-temporal Point Patterns Analysis
 
-Now let's shift our attention to Yangon. Yangon is the largest city in Myanmar and it would be interesting to find out the relationship between the road networks in the city and conflict events. We could have also chosen to analyse river or railway networks in Yangon, but I personally feel that there is not enough of them to give us an accurate representation.
+Now let's shift our attention to Yangon. Yangon is the largest city in Myanmar and it would be interesting to find out the relationship between the road networks in the city and conflict events. We could have used the official network data from MIMU, but I personally feel that there is not enough information to give us an accurate representation.
 
 ```{r}
 yangon_bounds <- boundaries %>% filter(ST == "Yangon")
@@ -687,26 +687,32 @@ conflict_data_2022 <- conflict_data %>% filter(year == 2022 & admin1 == "Yangon"
 Now that we have conflict points, let's bring in the road network data.
 
 ```{r}
-roads <- st_read("data", layer = "mmr_rdsl_mimu_250k") %>% st_transform(crs = 32647)
+roads <- st_read("data", layer = "gis_osm_roads_free_1") %>% st_transform(crs = 32647)
 ```
 
-Notice that we are casting each row to a `LineString`. This is going to be important later on as we cannot directly work with `MultiLineString`s which is what the Shapefile gives us.
+Take note that the amount of data we are working with is extremely large, so you will need a good PC for this. To expedite this, we are only going to take a small subset of roads into account. Trust me, this is mandatory.
+
+```{r}
+roads <- roads %>% filter(!is.na(name))
+```
 
 ### Data wrangling
 
-Notice that we have imported the road network for the entire Myanmar. To keep it within Yangon, we are going to use `st_intersection` to chop off any parts of the road that is not within the state.
+Notice that we have imported the network for the entire Myanmar. To keep it within Yangon, we are going to use `st_intersection` to chop off any parts of the network that is not within the state.
 
 ```{r}
-roads <- st_intersection(roads, yangon_bounds)
+roads <- roads %>% st_intersection(yangon_bounds)
 glimpse(st_geometry(roads))
 ```
 
-Just by using `st_intersection`, we get back an `sfc_GEOMETRY` object (we get a mix of `MultiLineString`s and `LineString`s), while what we want is `sfc_LINESTRING`.
+Just by using `st_intersection`, we get back an `sfc_GEOMETRY` object (full of `MultiLineString`s), whilst what we want is `sfc_LINESTRING`.
 
 ```{r}
-roads <- roads %>% st_cast("LINESTRING")
-class(st_geometry(roads))
+roads <- roads %>% st_cast("LINESTRING", do_split = TRUE)
+
 ```
+
+We use `do_split` here to ensure that `MultiLineString`s are properly cast to `LineString`s while preserving the line's curvature, as `lixelize_lines` cannot work with `MultiLineString`s properly.
 
 ### Calculating NKDE
 
@@ -719,7 +725,17 @@ lixels_roads <- lixelize_lines(roads, 700, mindist = 375)
 samples_roads <- lines_center(lixels_roads)
 ```
 
-There are many knobs we can configure here, but let's talk about one of the most important aspects, the method.
+There are many knobs we can configure here. The `nkde` function calculates the density of point events along a network. This method is used for analyzing spatial data constrained by a network to understand how events are distributed along these networks.
+
+`bw`: The kernel's bandwidth determines the spatial extent over which events affect the density calculation. A larger bandwidth produces a smoother density estimate over a wider area, while a smaller bandwidth leads to more localized density values. However, reducing the bandwidth too much can make the plot appear "noisy" or fragmented.
+
+`div`: This parameter specifies how the density is normalized. When set to `bw`, the bandwidth is used for normalization, ensuring that density values remain comparable even if the bandwidth changes.
+
+`method`: This defines the approach used for kernel density calculation. The `simple` method is the default, providing a straightforward kernel density estimation without additional complexity or refinement.
+
+`max_depth`: This controls how far the algorithm searches within the network to find neighboring points when estimating density. Increasing this value allows the algorithm to consider more distant points, which raises computation time. Reducing the `agg` parameter can make the algorithm more responsive to smaller event clusters but may introduce noise into the results.
+
+`agg`: This parameter determines the level of aggregation applied to the density results. A lower value results in finer, less aggregated estimates, while a higher value groups results over larger areas, providing a coarser density estimate. Lowering the `agg` parameter (which controls aggregation in the estimation) will make the algorithm more sensitive to smaller clusters of events, but it might also introduce noise.
 
 ```{r}
 densities_roads <- nkde(roads, 
@@ -758,6 +774,17 @@ tmap_mode('plot')
 ```
 
 As you can see, the main cluster of conflicts occur at Downtown Yangon. Many of these conflicts were triggered by homemade explosives made by guerrilla groups. As urban warfare became impractical, resistance forces shifted to targeting SAC-aligned officials, with 367 SAC-appointed officials assassinated between February 2021 and February 2022. Resistance also targeted the homes of SAC pilots in Yangon in retaliation for airstrikes on civilians. In September 2022, anti-SAC guerillas assassinated retired Brigadier General Ohn Thwin, mentor to SAC vice-chairman Soe Win, prompting increased security for top SAC officials.
+
+```{r}
+distance_matrix <- st_distance(conflict_data_2022)
+distance_matrix_numeric <- as.numeric(distance_matrix) # remove the units, or mean() will start complaining
+average_distance <- base::mean(as.numeric(distance_matrix_numeric[distance_matrix_numeric > 0])) # excluding the diagonal, which is 0
+average_distance / 1000
+```
+
+The density shown in the map is really not high, given the large geographical area of Yangon. Even when it looks like it is clustered from afar, they are really not that near from one another. As you can see, each point is on average 16.8 km away from each other.
+
+But even from that, we can clearly see that the conflicts cluster around human settlements (especially around Downtown Yangon), and hence near roadways.
 
 ```{r}
 tmap_mode('view')
