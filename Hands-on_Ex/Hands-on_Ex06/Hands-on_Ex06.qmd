@@ -1,6 +1,8 @@
 ---
 title: "Hands-on Exercise 6"
 author: "Eugene Toh"
+execute:
+  freeze: true
 ---
 
 # Global Measures of Spatial Autocorrelation

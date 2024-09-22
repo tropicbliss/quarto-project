@@ -1,6 +1,8 @@
 ---
 title: "In-class Exercise 5"
 author: "Eugene Toh"
+execute:
+  freeze: true
 ---
 
 ```{r}
