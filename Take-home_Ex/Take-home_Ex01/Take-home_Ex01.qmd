@@ -2,7 +2,6 @@
 title: "Take Home Exercise 1"
 author: "Eugene Toh"
 date: "last-modified"
-freeze: true
 ---
 
 Geospatial analytics offer valuable insights into the patterns of armed conflict, enabling better understanding and response strategies. This study focuses on armed conflict events in Myanmar from January 2021 to June 2024, using data from the Armed Conflict Location & Event Data (ACLED) project. The analysis examines the spatial and temporal distribution of four key event types: Battles, Explosion/Remote Violence, Strategic Developments, and Violence Against Civilians. By investigating quarterly data, this study aims to reveal patterns in the conflict, contributing to a deeper understanding of the ongoing violence in Myanmar.
@@ -50,7 +49,6 @@ st_crs(boundaries)
 A horrifying amount, most of which seems to be clustered at the interior of Myanmar. Let's overlay an administrative district map to see where most of them are all located at:
 
 ```{r}
-tmap_mode('plot')
 map1 <- tm_shape(boundaries) +
   tm_fill() +
   tm_borders() +
@@ -370,7 +368,7 @@ class(conflictMY_raster)
 #| fig-width: 12
 #| fig-height: 10
 tmap_mode("view")
-tm_shape(conflictMY_raster) + 
+tm_shape(conflictMY_raster) +
   tm_raster("layer", palette = "viridis", title = "Conflict intensity", alpha = 0.7) +
   tm_basemap("OpenStreetMap") +
   tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
@@ -573,34 +571,34 @@ tmap_mode("view")
 # Loop through the quarters and display KDE for each time slice
 tims <- 1:4  # Time indices corresponding to each quarter
 for (i in tims) {
-  
+
   # Extract the spatial KDE slice for the i-th quarter
   kde_slice <- st_kde$z[[i]]  # Assuming st_kde has a list of rasters for each time step
-  
+
   # Convert KDE slice to RasterLayer
   kde_raster <- raster(kde_slice)
-  
+
   # Ensure the raster has correct extent and CRS
   extent(kde_raster) <- st_bbox(townships_sf)  # Set bounding box to match townships
   crs(kde_raster) <- st_crs(townships_sf)$proj4string  # Match CRS
-  
+
   # Create the tmap plot
   tm <- tm_shape(kde_raster) +
     tm_raster("layer", title = paste("KDE at quarter", i), style = "cont", legend.show = TRUE, alpha = 0.7) +  # KDE layer
-    
+
     # Add township borders
-    tm_shape(townships_sf) + 
-    tm_borders(col = "black", lwd = 1) + 
-    
+    tm_shape(townships_sf) +
+    tm_borders(col = "black", lwd = 1) +
+
     # Add township labels at centroids
     tm_text("TS", size = 0.5, col = "blue") +
-    
+
     # Overlay OpenStreetMap as the basemap
-    tm_basemap(server = "OpenStreetMap") + 
-    
+    tm_basemap(server = "OpenStreetMap") +
+
     # Layout settings
     tm_layout(main.title = paste("KDE at quarter", i), legend.outside = TRUE)
-  
+
   # Print the map to display it in Quarto
   print(tm)
 }
@@ -693,7 +691,7 @@ roads <- st_read("data", layer = "gis_osm_roads_free_1") %>% st_transform(crs = 
 Take note that the amount of data we are working with is extremely large, so you will need a good PC for this. To expedite this, we are only going to take a small subset of roads into account. Trust me, this is mandatory.
 
 ```{r}
-roads <- roads %>% filter(!is.na(name))
+roads <- roads %>% filter(fclass == "primary")
 ```
 
 ### Data wrangling
@@ -709,7 +707,6 @@ Just by using `st_intersection`, we get back an `sfc_GEOMETRY` object (full of `
 
 ```{r}
 roads <- roads %>% st_cast("LINESTRING", do_split = TRUE)
-
 ```
 
 We use `do_split` here to ensure that `MultiLineString`s are properly cast to `LineString`s while preserving the line's curvature, as `lixelize_lines` cannot work with `MultiLineString`s properly.
@@ -764,14 +761,20 @@ samples_roads$density <- samples_roads$density * 1000
 lixels_roads$density <- lixels_roads$density * 1000
 ```
 
+To save on HTML rendering time, the interactive map will be hosted in a separate HTML in which you will find the link below.
+
 ```{r}
+#| eval: false
 tmap_mode('view')
-tm_shape(lixels_roads)+
+map <- tm_shape(lixels_roads)+
   tm_lines(col="density")+
 tm_shape(conflict_data_2022)+
   tm_dots()
+tmap_save(map, "map1.html")
 tmap_mode('plot')
 ```
+
+[Link to interactive map](map1.html)
 
 As you can see, the main cluster of conflicts occur at Downtown Yangon. Many of these conflicts were triggered by homemade explosives made by guerrilla groups. As urban warfare became impractical, resistance forces shifted to targeting SAC-aligned officials, with 367 SAC-appointed officials assassinated between February 2021 and February 2022. Resistance also targeted the homes of SAC pilots in Yangon in retaliation for airstrikes on civilians. In September 2022, anti-SAC guerillas assassinated retired Brigadier General Ohn Thwin, mentor to SAC vice-chairman Soe Win, prompting increased security for top SAC officials.
 
@@ -787,16 +790,21 @@ The density shown in the map is really not high, given the large geographical ar
 But even from that, we can clearly see that the conflicts cluster around human settlements (especially around Downtown Yangon), and hence near roadways.
 
 ```{r}
-tmap_mode('view')
-tm_shape(conflict_data_2022) +
+#| eval: false
+tmap_mode("view")
+map <- tm_basemap(server = "OpenStreetMap") +
+  tm_shape(conflict_data_2022) +
   tm_dots(col = "sub_event_type",
           palette = "Set1",
           size = 0.1,
           title = "Conflict Types") +
 tm_shape(roads) +
   tm_lines()
+tmap_save(map, filename = "map2.html")
 tmap_mode("plot")
 ```
+
+[Link to interactive map](map2.html)
 
 There is a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.
 
