@@ -691,7 +691,7 @@ roads <- st_read("data", layer = "gis_osm_roads_free_1") %>% st_transform(crs = 
 Take note that the amount of data we are working with is extremely large, so you will need a good PC for this. To expedite this, we are only going to take a small subset of roads into account. Trust me, this is mandatory.
 
 ```{r}
-roads <- roads %>% filter(fclass == "primary")
+roads <- roads %>% filter(!is.na(name))
 ```
 
 ### Data wrangling
