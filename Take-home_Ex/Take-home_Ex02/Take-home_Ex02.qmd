@@ -1,0 +1,201 @@
+---
+title: "Take Home Exercise 2"
+author: "Eugene Toh"
+date: "last-modified"
+---
+
+Drug abuse is a significant public health issue in Thailand, which is situated near the Golden Triangle, one of the largest drug production regions in the world. Thailand’s geographic location and expanding transportation infrastructure have reinforced its role as a major market and transit point for drug trafficking. This has further fueled domestic drug consumption, especially among the youth, with an estimated 2.7 million young people involved in drug use. Of those aged 15 to 19, approximately 300,000 are in need of treatment. This study seeks to perform a geospatial analysis of drug abuse patterns within Thailand, examining the socio-economic conditions and infrastructural factors that influence the distribution and prevalence of drug abuse in various regions.
+
+# Main data processing
+
+## Import dependencies
+
+```{r}
+pacman::p_load(sf, tidyverse, tmap, sfdep)
+```
+
+## Import data
+
+```{r}
+states_sf <- st_read("data", layer = "tha_admbnda_adm1_rtsd_20220121")
+drugs_sf <- read_csv("data/thai_drug_offenses_2017_2022.csv")
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(states_sf) +
+  tm_polygons() +
+  tm_text("ADM1_EN", col = "blue", size = 0.5, remove.overlap = TRUE)
+```
+
+## Data wrangling
+
+```{r}
+can_be_left_joined <- all(states_sf$ADM1_EN %in% drugs_sf$province_en)
+```
+
+```{r}
+# values in states_sf not in drugs_sf
+non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_sf$province_en)
+non_matching_values
+```
+
+```{r}
+unique_values <- sort(unique(drugs_sf$province_en))
+unique_values
+```
+
+```{r}
+drugs_sf <- drugs_sf %>% mutate(province_en = recode(province_en, "Loburi" = "Lop Buri", "buogkan" = "Bueng Kan"))
+```
+
+```{r}
+non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_sf$province_en)
+non_matching_values
+```
+
+# Are the main signs of drug abuse in Thailand affected by location, or do they stay the same no matter where you are in the country?
+
+## Data wrangling
+
+```{r}
+agg_by_year_sf <- drugs_sf %>%
+  group_by(province_en, types_of_drug_offenses) %>%
+  summarise(no_cases = sum(no_cases))
+```
+
+```{r}
+unique_values <- sort(unique(agg_by_year_sf$types_of_drug_offenses))
+unique_values
+```
+
+```{r}
+agg_by_year_sf <- agg_by_year_sf %>% filter(types_of_drug_offenses == "drug_use_cases") %>% select(1, 3)
+```
+
+```{r}
+agg_by_year_sf <- agg_by_year_sf %>% rename(ADM1_EN = "province_en")
+state_drug_stats <- left_join(states_sf, agg_by_year_sf) %>% select(3, 17:18) %>% rename(cases = "no_cases")
+```
+
+## Analysis
+
+```{r}
+state_drug_stats <- state_drug_stats %>% arrange(desc(cases))
+state_drug_stats$ADM1_EN[1:3]
+```
+
+The state with the highest drug use rate is Bangkok, followed by Chon Buri and Nakhon Si Thammarat. The fact that Bangkok has the highest drug use rate is not particularly surprising, given that it is the most populous Thai city. Chon Buri is home to Pattaya City, which is particularly known for its nightlife and seedy atmosphere.
+
+### Visualising drug abuse rate by state
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+equal <- tm_shape(state_drug_stats) +
+  tm_fill("cases",
+          n = 5,
+          style = "equal") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Equal interval classification")
+
+quantile <- tm_shape(state_drug_stats) +
+  tm_fill("cases",
+          n = 5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Equal quantile classification")
+
+tmap_arrange(equal, 
+             quantile, 
+             asp=1, 
+             ncol=2)
+```
+
+### Moran's I
+
+Before we do any analysis, we need to generate the nearest neighbours of each state. However, some states have no neighbours, and we need to deal with that.
+
+![Phuket has no neighbours](assets/pkuket_no_neighbour.png)
+
+```{r}
+wm_q <- state_drug_stats %>% mutate(nb = st_contiguity(geometry), .before = 1)
+summary(wm_q)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(states_sf) +
+  tm_polygons() +
+  tm_text("ADM1_EN", col = "blue", size = 0.5, remove.overlap = TRUE)
+```
+
+As you can see, Phuket is not physically connected to the mainland. To deal with that, we will manually set the neighbour of Phuket as Phangnga (which is fair given that the only bridge to Phuket is via Phangnga).
+
+We first need to get the index of Phangnga.
+
+```{r}
+which(wm_q$ADM1_EN == "Phangnga")
+```
+
+```{r}
+wm_q$nb[wm_q$ADM1_EN == "Phuket"] <- as.integer(c(58))
+```
+
+Now, we can calculate the weights.
+
+```{r}
+wm_q <- wm_q %>% mutate(wt = st_weights(nb, style = "W"), .before = 1)
+wm_q
+```
+
+```{r}
+nearest_neighbours <- wm_q$nb
+longitude <- map_dbl(wm_q$geometry, ~st_centroid(.x)[[1]])
+latitude <- map_dbl(wm_q$geometry, ~st_centroid(.x)[[2]])
+coords <- cbind(longitude, latitude)
+head(coords)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+par(mar = c(1, 1, 1, 1)) # decrease the excessive margins
+plot(wm_q$geometry, border = "lightgrey")
+plot(nearest_neighbours, coords, pch = 19, cex = 0.6, add = TRUE, col = "red")
+```
+
+```{r}
+set.seed(27)
+bperm <- global_moran_perm(wm_q$cases, wm_q$nb, wm_q$wt)
+bperm
+```
+
+```{r}
+hist(bperm$res, 
+     freq=TRUE, 
+     breaks=20, 
+     xlab="Simulated Moran's I")
+abline(v=0,
+       col="red")
+```
+
+### Geary's C
+
+# Where are the main areas of concentrated drug abuse, and are there any unusual patterns or high-risk spots?
+
+## Data wrangling
+
+## Analysis
+
+### Local Indicators of Spatial Association (LISA) - Anselin's Local Moran's I
+
+### Getis-Ord Gi Statistic
+
+# Drug abuse visualised over time
+
+# Conclusion
