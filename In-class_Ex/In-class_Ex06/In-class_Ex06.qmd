@@ -1,0 +1,115 @@
+---
+title: "In-class Exercise 6"
+author: "Eugene Toh"
+execute:
+  freeze: true
+---
+
+Note that we used `spdep` earlier. We are going to use `sfdep` which is a wrapper on top of it. It make working with `tidyverse` way more convenient.
+
+```{r}
+pacman::p_load(sfdep, tmap, tidyverse, sf)
+```
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+hunan <- left_join(hunan, hunan2012) %>% select(1:4, 7, 15)
+```
+
+We will keep this as WGS84.
+
+```{r}
+wm_q <- hunan %>% mutate(nb = st_contiguity(geometry), wt = st_weights(nb, style = "W"), .before = 1)
+```
+
+`wm_q` is a tibble, and the `nb` field represents neighbours. `.before = 1` makes sure that the fields created with `mutate` are inserted in front of the other fields.
+
+```{r}
+global_moran_test(wm_q$GDPPC, wm_q$nb, wm_q$wt)
+```
+
+Moran I statistic is positive, which shows signs of clustering. But since it is only 0.3, there is only weak clustering. If p-value is more than 0.05, you fail the null hypothesis and hence can't use the statistic value to prove your hypothesis since there is insufficient evidence to make a concrete conclusion.
+
+You can also use Monte Carlo to run several iterations to calculate values.
+
+Note that running simulations is preferred over the above method.
+
+To make the result reproducible you can set the seed.
+
+```{r}
+set.seed(1234)
+```
+
+```{r}
+global_moran_perm(wm_q$GDPPC, wm_q$nb, wm_q$wt, nsim = 99)
+```
+
+You can see that both statistic values from both tests is roughly the same.
+
+To compute local moran:
+
+```{r}
+lisa <- wm_q %>% mutate(local_moran = local_moran(GDPPC, nb, wt, nsim = 99), .before = 1) %>% unnest(local_moran)
+```
+
+Use `unnest` to make the data-table one-dimensional since there is a one-to-many relationship in the `local_moran` column. `ii` is your local moran I. You can see there are 3 `p_*` columns, which represent p-values. `p_ii` is your non-simulated method, `p_ii_sim` uses simulations, while `p_folder_sim` is another test method. Make sure that you stay with one test method.
+
+There is also `mean`, `median`, and `pysal`. The first two methods are the important ones. If your values are normally distributed, use mean. Else use median if it is skewed. You can check the `skewness` column. If it is close to 0 (not skewed) use mean. You have to stick with one column depending on whether the majority is skewed or not skewed. Take note that you will also have to take the number of neighbours into account.
+
+```{r}
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("ii") +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "local Moran's I of GDPPC", main.title.size = 2)
+```
+
+```{r}
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("p_ii_sim") +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "p-value of local Moran's I", main.title.size = 2)
+```
+
+```{r}
+lisa_sig <- lisa %>%
+  filter(p_ii < 0.05)
+
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) + # grey (not statistically significant)
+  tm_shape(lisa_sig) +
+  tm_fill("mean") +
+  tm_borders(alpha = 0.4) # overlay colours
+```
+
+We can also calculate hot-spots and cold-spots (LISA clusters).
+
+```{r}
+wm_idw <- hunan %>% mutate(nb = st_contiguity(geometry), wts = st_inverse_distance(nb, geometry, scale = 1, alpha = 1), .before = 1)
+```
+
+```{r}
+HCSA <- wm_idw %>%
+  mutate(local_Gi = local_gstar_perm(GDPPC, nb, wt, nsim = 99), .before = 1) %>% unnest(local_Gi)
+HCSA
+```
+
+```{r}
+HCSA_sig <- HCSA %>%
+  filter(p_sim < 0.05)
+
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+  tm_shape(HCSA_sig) +
+  tm_fill("gi_star") +
+  tm_borders(alpha = 0.4)
+```

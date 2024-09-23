@@ -2,6 +2,8 @@
 title: "Take Home Exercise 1"
 author: "Eugene Toh"
 date: "last-modified"
+execute:
+  freeze: true
 ---
 
 Geospatial analytics offer valuable insights into the patterns of armed conflict, enabling better understanding and response strategies. This study focuses on armed conflict events in Myanmar from January 2021 to June 2024, using data from the Armed Conflict Location & Event Data (ACLED) project. The analysis examines the spatial and temporal distribution of four key event types: Battles, Explosion/Remote Violence, Strategic Developments, and Violence Against Civilians. By investigating quarterly data, this study aims to reveal patterns in the conflict, contributing to a deeper understanding of the ongoing violence in Myanmar.

@@ -102,6 +102,8 @@ Now here comes the fun part. We are going to do Moran's I testing. It measures h
 
 -   A value close to zero implies no spatial autocorrelation, meaning the values are randomly distributed across space
 
+The values range from -1 to 1.
+
 ```{r}
 moran.test(hunan$GDPPC, 
            listw=rswm_q, 
@@ -407,6 +409,8 @@ Low-low: Regions with low values and neighboring regions also with low values (n
 
 High-high: Regions with high values and neighboring regions also with high values (positive deviation with positive local Moran’s I). This identifies clusters of high values, where both the region and its neighbors have high values. In terms of GDPPC, this would represent a cluster of counties with high GDP per capita.
 
+High-high and low-low are considered clusters. High-low and low-high are considered outliers.
+
 ## Hotspot and Coldspot Area Analysis
 
 Hotspot and coldspot analysis is a spatial statistical method used to pinpoint areas where high or low values of a specific variable cluster together geographically. It aids in uncovering significant spatial patterns, emphasizing regions where extreme values, either high or low, are concentrated.
@@ -496,7 +500,9 @@ Gimap <-tm_shape(hunan.gi) +
 tmap_arrange(gdppc, Gimap, asp=1, ncol=2)
 ```
 
-Areas with higher *Gi* values\* in *Getis-Ord Gi* analysis\* represent **hotspots**, in which regions with a higher than expected GDP per capita cluster together.
+Areas with higher *Gi* values\* in *Getis-Ord Gi* analysis\* represent **hotspots**, in which regions with a higher than expected GDP per capita cluster together. Note that hotspots and coldspots are not considered outliers.
+
+Note that if you have negative and positive values, it's better to use two different colour schemes and that they have good contrast with each other. If there are no negative values, feel free to use a single colour scheme. If it is categorical, make each category be a totally different colour. If regions have data but it is not significant, make it grey.
 
 ##### Adaptive distance
 
