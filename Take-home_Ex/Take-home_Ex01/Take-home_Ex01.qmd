@@ -804,7 +804,7 @@ tmap_save(map, filename = "map2.html")
 tmap_mode("plot")
 ```
 
-[Link to interactive map](map2.html)
+[Link to interactive map](https://quartobuckets.eugenetoh.net/map2.html)
 
 There is a huge cluster of conflicts in Downtown Yangon corresponding with remove explosives or IEDs. There is also a tinier cluster of arrests west of Yangon. On 31 May 2022, a bombing near Sule Pagoda in Yangon killed one and injured nine. State media blamed the People's Defence Force, which denied involvement.
 
