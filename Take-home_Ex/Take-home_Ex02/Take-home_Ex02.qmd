@@ -18,7 +18,7 @@ pacman::p_load(sf, tidyverse, tmap, sfdep)
 
 ```{r}
 states_sf <- st_read("data", layer = "tha_admbnda_adm1_rtsd_20220121")
-drugs_sf <- read_csv("data/thai_drug_offenses_2017_2022.csv")
+drugs_data <- read_csv("data/thai_drug_offenses_2017_2022.csv")
 ```
 
 ```{r}
@@ -32,51 +32,79 @@ tm_shape(states_sf) +
 
 ## Data wrangling
 
+To combine the geographical spatial data with the aspatial drug cases data, we need to make sure that the state names in both data-frames are normalised.
+
 ```{r}
-can_be_left_joined <- all(states_sf$ADM1_EN %in% drugs_sf$province_en)
+can_be_left_joined <- all(states_sf$ADM1_EN %in% drugs_data$province_en)
 ```
 
 ```{r}
-# values in states_sf not in drugs_sf
-non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_sf$province_en)
+# values in states_sf not in drugs_data
+non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_data$province_en)
 non_matching_values
 ```
 
+As we can see, we have two state names that are not found in `drugs_data`.
+
 ```{r}
-unique_values <- sort(unique(drugs_sf$province_en))
+unique_values <- sort(unique(drugs_data$province_en))
 unique_values
 ```
 
-```{r}
-drugs_sf <- drugs_sf %>% mutate(province_en = recode(province_en, "Loburi" = "Lop Buri", "buogkan" = "Bueng Kan"))
-```
+Now, we need to replace `Loburi` with `Lop Buri` and vice versa.
 
 ```{r}
-non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_sf$province_en)
+drugs_data <- drugs_data %>% mutate(province_en = recode(province_en, "Loburi" = "Lop Buri", "buogkan" = "Bueng Kan"))
+```
+
+Now, I just need to make sure that there are no states that I missed.
+
+```{r}
+non_matching_values <- setdiff(states_sf$ADM1_EN, drugs_data$province_en)
 non_matching_values
 ```
 
-# Are the main signs of drug abuse in Thailand affected by location, or do they stay the same no matter where you are in the country?
+# Are the number of cases of drug abuse in Thailand affected by location, or do they stay the same no matter where you are in the country?
+
+Drug-related issues might be influenced by various regional factors such as socioeconomic conditions, accessibility to drugs, law enforcement presence, and cultural or local norms. For example, urban areas may have higher rates due to larger populations and potentially more significant drug trade routes, while certain rural areas might experience drug abuse related to economic hardship or lack of access to preventive measures.
+
+Answering this question can help provide valuable insights into how geographic, social, and economic factors influence drug abuse patterns in Thailand. By understanding these spatial differences, public health officials, policymakers, and law enforcement can target specific regions with tailored intervention programs, resource allocation, and educational campaigns. Moreover, it can help researchers analyze whether prevention and treatment efforts need to be region-specific to be more effective, which could lead to more efficient use of resources in addressing drug abuse in the country.
+
+Both Moran's I and Geary's C can help in analyzing whether the spatial distribution of drug abuse cases in Thailand is random or exhibits spatial autocorrelation, meaning that locations near each other have similar or dissimilar values.
 
 ## Data wrangling
 
 ```{r}
-agg_by_year_sf <- drugs_sf %>%
+sort(unique(drugs_data$fiscal_year))
+```
+
+Since in this case, we are analysing the number of cases of drug abuse as a whole, we will aggregate all the data provided by state across the time period of 2017-2022.
+
+```{r}
+agg_by_year_sf <- drugs_data %>%
   group_by(province_en, types_of_drug_offenses) %>%
   summarise(no_cases = sum(no_cases))
 ```
 
 ```{r}
-unique_values <- sort(unique(agg_by_year_sf$types_of_drug_offenses))
-unique_values
+sort(unique(agg_by_year_sf$types_of_drug_offenses))
 ```
+
+Our data contains all sorts of data. For now, we are only interested in drug use cases.
 
 ```{r}
 agg_by_year_sf <- agg_by_year_sf %>% filter(types_of_drug_offenses == "drug_use_cases") %>% select(1, 3)
 ```
 
+To make sure that `left_join` works properly, we need to make sure that the column names of both columns representing the state name in English is the same.
+
 ```{r}
 agg_by_year_sf <- agg_by_year_sf %>% rename(ADM1_EN = "province_en")
+```
+
+After that, we can join both data-tables together and select only the relevant columns.
+
+```{r}
 state_drug_stats <- left_join(states_sf, agg_by_year_sf) %>% select(3, 17:18) %>% rename(cases = "no_cases")
 ```
 
@@ -92,8 +120,8 @@ The state with the highest drug use rate is Bangkok, followed by Chon Buri and N
 ### Visualising drug abuse rate by state
 
 ```{r}
-#| fig-width: 10
-#| fig-height: 12
+#| fig-width: 12
+#| fig-height: 10
 equal <- tm_shape(state_drug_stats) +
   tm_fill("cases",
           n = 5,
@@ -113,6 +141,14 @@ tmap_arrange(equal,
              asp=1, 
              ncol=2)
 ```
+
+We are using two methods here to classify data into bins.
+
+In equal interval classification, the range of data values is divided into equal-sized intervals. The same range of values is assigned to each class. For example, if the data spans from 0 to 100 and you want 5 classes, each class would cover a range of 20 units (0-20, 21-40, etc.), regardless of how many data points fall into each class.
+
+In equal quantile classification, the data is divided into classes so that each class contains an equal number of data points, regardless of the range of values. For example, if you have 100 data points and you want 5 classes, each class will contain 20 data points, regardless of the range of values they fall into. The boundaries between classes are determined by the percentiles of the data.
+
+The question of whether to use which method depends on whether your data is geographically evenly distributed. If your data is evenly distributed, it's better to use equal interval classification. If your data is unevenly distributed, equal quantile classification might be a better choice.
 
 ### Moran's I
 
@@ -153,6 +189,8 @@ wm_q <- wm_q %>% mutate(wt = st_weights(nb, style = "W"), .before = 1)
 wm_q
 ```
 
+Now, we need to calculate nearest neighbours. But this time we are defining neighbours based on distance. First, we need to derive the centroid of each state. This is done by calculating the longitude and latitude separately, then combining them both into a list using `cbind`.
+
 ```{r}
 nearest_neighbours <- wm_q$nb
 longitude <- map_dbl(wm_q$geometry, ~st_centroid(.x)[[1]])
@@ -160,6 +198,8 @@ latitude <- map_dbl(wm_q$geometry, ~st_centroid(.x)[[2]])
 coords <- cbind(longitude, latitude)
 head(coords)
 ```
+
+Now, we can visualise the relationships between each state based on nearest neighbours to make sure that everything works correctly.
 
 ```{r}
 #| fig-width: 10
@@ -169,11 +209,33 @@ plot(wm_q$geometry, border = "lightgrey")
 plot(nearest_neighbours, coords, pch = 19, cex = 0.6, add = TRUE, col = "red")
 ```
 
+Now here comes the fun part. We are going to do Moran's I testing, specifically using Monte Carlo hypothesis testing. It measures how much nearby geographic areas are related in terms of a specific variable. It assesses whether similar or dissimilar values are clustered together in space or randomly distributed.
+
+-   A positive Moran's I indicates that similar values tend to cluster
+
+-   A negative value suggests that dissimilar values are near each other
+
+-   A value close to zero implies no spatial autocorrelation, meaning the values are randomly distributed across space
+
+The values range from -1 to 1.
+
+We first need to set a consistent seed to make sure that our results are reproducible across runs. Then, using `global_moran_perm` from `sfdep` we can do hypothesis testing.
+
 ```{r}
 set.seed(27)
 bperm <- global_moran_perm(wm_q$cases, wm_q$nb, wm_q$wt)
 bperm
 ```
+
+We are running 500 simulations to raise the confidence of our result.
+
+From our data, we have a `statistic` of 0.097167 which is the observed value of Moran's I based on the actual data.
+
+We have an observed rank of 462 which represents the position of the observed Moran’s I value (0.097167) within the set of 501 values (the 500 simulated plus the 1 observed). The observed Moran’s I is the 462nd highest value among the 501 simulations, which is towards the upper end of the distribution.
+
+We also get a p-value of 0.152 which is calculated by comparing the observed Moran’s I with the simulated distribution of Moran’s I values under the assumption of no spatial autocorrelation. In this case, the p-value of 0.152 means there is a 15.2% probability that the observed Moran’s I could occur due to random chance. Since the p-value is greater than 0.05 (the p-value we are using), the observed Moran’s I is not statistically significant, meaning we fail to reject the null hypothesis that there is no spatial autocorrelation.
+
+An Observed Moran’s I value of 0.097167 suggests weak positive spatial autocorrelation, meaning that neighboring areas tend to have somewhat similar values, but the pattern is not strong. A p-value of 0.152 indicates that this weak spatial autocorrelation is not statistically significant, so we cannot confidently say that there is a real spatial pattern in the data. Thus, the Monte Carlo simulation results suggest that the observed spatial pattern may not be meaningfully different from random distribution.
 
 ```{r}
 hist(bperm$res, 
@@ -184,18 +246,172 @@ abline(v=0,
        col="red")
 ```
 
+The distribution of simulated Moran's I values with a rightward skew suggests that the majority of simulated Moran's I values cluster around values less than zero. The red vertical line at 0 provides a reference for no spatial autocorrelation.
+
+The observed Moran’s I (0.097167) was ranked 462 out of 501 values, which is relatively high in the distribution. Combined with the rightward skew, this suggests that the observed value is on the higher side compared to the simulated values, but not extreme enough to be statistically significant.
+
+Since the rightward skew is moderate, it could imply that the positive spatial autocorrelation observed in the data is not as unusual as it would be in a perfectly symmetric distribution. This would explain why the p-value (0.152) indicates that the observed value is not statistically significant.
+
+### Conclusion
+
+There is a slight tendency for states with similar numbers of drug cases to cluster geographically. In other words, nearby states might have somewhat similar rates of drug cases, but this pattern is weak.
+
+The p-value suggests that the weak clustering observed could have occurred by random chance. The result is not statistically significant, meaning there is no strong evidence to suggest that the spatial distribution of drug cases across states is different from a random distribution.
+
+This means that while there may be some spatial clustering, it’s not strong enough to confidently assert that spatial proximity is a key driver of drug case numbers across states.
+
+The slight rightward skew in the distribution of the simulated Moran’s I values suggests that moderate positive spatial autocorrelation is somewhat common even in random patterns. This reinforces the idea that the observed Moran’s I value is on the higher side but not unusually high compared to what might happen by chance.
+
+The lack of strong spatial autocorrelation implies that drug cases are not strongly clustered in a particular set of geographically adjacent states. Therefore, any intervention or public health response should not necessarily focus on geographic proximity alone. Other factors, such as local socio-economic conditions, law enforcement effectiveness, or drug trafficking routes, might play a more significant role than simple geographic location.
+
+Hence, geography plays only a limited role in the spatial distribution of drug cases across states, and further analysis could explore local nuances or non-spatial factors influencing the distribution.
+
 ### Geary's C
 
-# Where are the main areas of concentrated drug abuse, and are there any unusual patterns or high-risk spots?
+```{r}
+cperm <- global_c_perm(wm_q$cases, wm_q$nb, wm_q$wt)
+cperm
+```
 
-## Data wrangling
+We are running 500 simulations to raise the confidence of our result.
+
+From our data, we have a `statistic` of 0.96656 which is the observed value of Geary C based on the actual data. Geary's C typically ranges between 0 and 2.
+
+-   C ≈ 1 indicates no spatial autocorrelation (random spatial distribution).
+
+-   C \< 1 suggests positive spatial autocorrelation (neighboring areas are more similar).
+
+-   C \> 1 indicates negative spatial autocorrelation (neighboring areas are dissimilar).
+
+A value of 0.96656 is very close to 1, which suggests that the data (drug cases per state) exhibit almost no spatial autocorrelation.
+
+We have an observed rank of 198 which represents the position of the observed Geary C value (0.96656) within the set of 501 values (the 500 simulated plus the 1 observed). The observed Geary C is the 198th highest value among the 501 simulations, which is towards the middle of the distribution, suggesting that the observed value is not extreme or unusual compared to the random simulations.
+
+The p-value of 0.396 is quite large, indicating there is a 39.6% chance of obtaining a Geary’s C value as extreme as the observed value under the null hypothesis (random spatial distribution). Since the p-value is well above the common threshold of 0.05, the result is not statistically significant. This means we fail to reject the null hypothesis, and the observed spatial pattern of drug cases per state is likely due to random chance.
+
+Since the alternative hypothesis is "greater", this means you are testing whether the observed Geary’s C value is greater than what would be expected under random spatial distribution (i.e., if there’s negative spatial autocorrelation). The high p-value suggests no strong evidence for negative spatial autocorrelation in your data.
+
+```{r}
+hist(cperm$res, 
+     freq=TRUE, 
+     breaks=20, 
+     xlab="Simulated Geary C")
+abline(v=0,
+       col="red")
+```
+
+As you can see, the histogram of observed Geary C values has an extremely slight rightward skew.
+
+A rightward skew suggests that most of the simulated Geary’s C values are clustered slightly below 1, with fewer but still some simulations yielding values greater than 1. This implies that while most random configurations tend to exhibit a small degree of positive spatial autocorrelation (values close to 1 but slightly less than 1), there are occasional configurations where spatial units are more dissimilar (values greater than 1, indicating negative spatial autocorrelation).
+
+Since the observed Geary’s C value is very close to 1 (0.96656), it falls well within the bulk of the simulated distribution and is consistent with the slight positive autocorrelation seen in the simulations.
+
+The rightward skew, combined with the observed rank and the non-significant p-value, reinforces the idea that the spatial pattern observed is not unusual and could easily arise due to random spatial distribution.
+
+### Conclusion
+
+Geary’s C being close to 1 and the non-significant p-value both indicate that there is no significant spatial autocorrelation in the number of drug cases across states. In other words, the spatial distribution of drug cases across states appears to be random, with no strong tendency for neighboring states to have similar or dissimilar numbers of cases.
+
+Similar to the result from Moran’s I, this finding suggests that geographic proximity may not be a strong factor in the distribution of drug cases. Other factors—such as socioeconomic variables, policy differences, or localized issues—might be more important in explaining variations in drug case numbers between states.
+
+# Where are the main areas of concentrated drug abuse, and are there any unusual patterns or high-risk spots?
 
 ## Analysis
 
 ### Local Indicators of Spatial Association (LISA) - Anselin's Local Moran's I
 
+```{r}
+lisa <- wm_q %>% mutate(local_moran = local_moran(cases, nb, wt, nsim = 99), .before = 1) %>% unnest(local_moran)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("ii") +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "Local Moran's I", main.title.size = 2)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("p_ii_sim") +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "p-value of local Moran's I", main.title.size = 2)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+lisa_sig <- lisa %>%
+  filter(p_ii < 0.05)
+
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) + # grey (not statistically significant)
+  tm_shape(lisa_sig) +
+  tm_fill("mean") +
+  tm_borders(alpha = 0.4) # overlay colours
+```
+
 ### Getis-Ord Gi Statistic
 
+```{r}
+wm_idw <- wm_q %>% mutate(wts = st_inverse_distance(nb, geometry, scale = 1, alpha = 1), .before = 1)
+```
+
+```{r}
+HCSA <- wm_idw %>%
+  mutate(local_Gi = local_gstar_perm(cases, nb, wt, nsim = 99), .before = 1) %>% unnest(local_Gi)
+HCSA
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+HCSA_sig <- HCSA %>%
+  filter(p_sim < 0.05)
+
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+  tm_shape(HCSA_sig) +
+  tm_fill("gi_star") +
+  tm_borders(alpha = 0.4)
+```
+
 # Drug abuse visualised over time
+
+```{r}
+drug_use_stats <- drugs_data %>% filter(types_of_drug_offenses == "drug_use_cases")
+```
+
+```{r}
+drug_use_stats <- drug_use_stats %>% rename(ADM1_EN = "province_en")
+drug_use_stats_sf <- left_join(states_sf, drug_use_stats)
+```
+
+```{r}
+#| output: false
+tmap_mode("plot")
+animation <- tm_shape(drug_use_stats_sf) +
+  tm_fill("no_cases", title = "Drug use cases") +
+  tm_borders(alpha = 0.5) +
+  tm_text("ADM1_EN", col = "blue", size = 0.5, remove.overlap = TRUE) +
+  tm_facets(along = "fiscal_year", free.coords = FALSE) +
+  tm_layout(legend.outside = TRUE, frame = FALSE)
+
+tmap_animation(animation, filename = "assets/drug_use_cases_animation.gif", delay = 300, width = 1080, height = 1920)
+```
+
+![Drug use by states](assets/drug_use_cases_animation.gif)
 
 # Conclusion
