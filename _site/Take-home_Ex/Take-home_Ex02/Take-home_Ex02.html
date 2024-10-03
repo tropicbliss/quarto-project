@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Eugene Toh">
-<meta name="dcterms.date" content="2024-10-02">
+<meta name="dcterms.date" content="2024-10-03">
 
 <title>IS415-GAA - Take Home Exercise 2</title>
 <style>
@@ -284,7 +284,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">October 2, 2024</p>
+      <p class="date">October 3, 2024</p>
     </div>
   </div>
   
@@ -923,13 +923,20 @@ alternative hypothesis: greater</code></pre>
 </section>
 <section id="where-are-the-main-areas-of-concentrated-drug-abuse-and-are-there-any-unusual-patterns-or-high-risk-spots" class="level1">
 <h1>Where are the main areas of concentrated drug abuse, and are there any unusual patterns or high-risk spots?</h1>
+<p>Identifying hotspots or areas of concentrated drug abuse will allow for more targeted interventions by public health officials, law enforcement, and policymakers. For example, resources such as prevention programs, rehabilitation centers, and law enforcement efforts could be directed to high-risk areas.</p>
+<p>Using Local Indicators of Spatial Association (LISA) and the Getis-Ord Gi statistic* can provide deeper insights into the spatial distribution of drug abuse cases, offering valuable tools to identify local patterns, clusters, and hotspots. These methods allow for more granular analysis than global statistics like Moran’s I or Geary’s C.</p>
 <section id="analysis-1" class="level2">
 <h2 class="anchored" data-anchor-id="analysis-1">Analysis</h2>
+<p>LISA identifies clusters and outliers by calculating spatial autocorrelation for individual spatial units such as states rather than the entire dataset, as global Moran’s I does.</p>
+<p>For example, if you were analyzing the number of cases of drug use across different states in Thailand, LISA would allow you to identify which states have drug use counts that are spatially autocorrelated with neighboring srares. It can highlight specific counties where drug use is either unusually high or low compared to their surroundings.</p>
 <section id="local-indicators-of-spatial-association-lisa---anselins-local-morans-i" class="level3">
 <h3 class="anchored" data-anchor-id="local-indicators-of-spatial-association-lisa---anselins-local-morans-i">Local Indicators of Spatial Association (LISA) - Anselin’s Local Moran’s I</h3>
+<p>By mapping out the p-value of Local Moran’s I (LISA), we can determine the statistical significance of the observed local spatial autocorrelation. This step is crucial because it helps distinguish between areas where the clustering or dispersion of drug abuse cases is meaningful and areas where any observed pattern could be due to random chance.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>lisa <span class="ot">&lt;-</span> wm_q <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">local_moran =</span> <span class="fu">local_moran</span>(cases, nb, wt, <span class="at">nsim =</span> <span class="dv">99</span>), <span class="at">.before =</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> <span class="fu">unnest</span>(local_moran)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Local Moran’s I values are useful for identifying spatial clusters, showing areas where similar values (either high or low) are grouped together. A positive Local Moran’s I indicates clustering of similar values, while a negative value suggests dissimilarity between an area and its neighbors. By plotting these values, you can visualize where clusters of high or low values exist within the study area.</p>
+<p>Local Moran’s I also detects outliers, highlighting areas with values that differ significantly from their neighbors. This can reveal places where high values are surrounded by low ones, or vice versa. Mapping these outliers helps to identify anomalies or regions that diverge from overall spatial trends.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -939,7 +946,8 @@ alternative hypothesis: greater</code></pre>
 <span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"ii"</span>) <span class="sc">+</span></span>
 <span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
 <span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_view</span>(<span class="at">set.zoom.limits =</span> <span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">8</span>)) <span class="sc">+</span></span>
-<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"Local Moran's I"</span>, <span class="at">main.title.size =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"Local Moran's I"</span>, <span class="at">main.title.size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_text</span>(<span class="st">"ADM1_EN"</span>, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">0.5</span>, <span class="at">remove.overlap =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Variable(s) "ii" contains positive and negative values, so midpoint is set to 0. Set midpoint = NA to show the full spectrum of the color palette.</code></pre>
 </div>
@@ -951,6 +959,7 @@ alternative hypothesis: greater</code></pre>
 </div>
 </div>
 </div>
+<p>The state of Samut Sakhon has the highest local Moran’s I value, while the state of Rayong has the lowest local Moran’s I value.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -960,7 +969,8 @@ alternative hypothesis: greater</code></pre>
 <span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"p_ii_sim"</span>) <span class="sc">+</span></span>
 <span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
 <span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_view</span>(<span class="at">set.zoom.limits =</span> <span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">8</span>)) <span class="sc">+</span></span>
-<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"p-value of local Moran's I"</span>, <span class="at">main.title.size =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_text</span>(<span class="st">"ADM1_EN"</span>, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">0.5</span>, <span class="at">remove.overlap =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb58-6"><a href="#cb58-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"p-value of local Moran's I"</span>, <span class="at">main.title.size =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -969,6 +979,12 @@ alternative hypothesis: greater</code></pre>
 </div>
 </div>
 </div>
+<p>Areas with significant low p-values (p &lt; 0.05) will indicate regions where drug abuse cases are clustered more strongly than expected by chance, suggesting these regions may be hotspots of drug abuse. Other areas with higher p-values might show that any clustering observed there could simply be random and not indicative of an actual spatial process influencing drug abuse.</p>
+<p>As you can see, besides Bangkok and Trat, areas with high p-values are situated at around the midpoint of the Kra Isthmus and north-east of Thailand. This means that drug abuse cases are clustered more strongly there than expected by chance.</p>
+<p>The Kra Isthmus and northeastern Thailand regions, both of which are showing clusters of drug abuse based on the high p-values from your analysis, are significantly impacted by drug trafficking and other socio-economic factors, which may explain the observed patterns.</p>
+<p>The Kra Isthmus is a strategic passageway for both domestic and international drug trafficking due to its proximity to maritime trade routes. It has become a hotspot for the transit of methamphetamine and other narcotics from production areas in the Golden Triangle (border regions of Thailand, Myanmar, and Laos). The chaos resulting from political instability in Myanmar has led to a surge in meth production, much of which moves through Thailand’s southern regions before being smuggled further afield. Drug prices, particularly for meth, have plummeted in recent years, making it easier for people in these areas to access drugs, contributing to higher usage rates.</p>
+<p>Northeastern Thailand (also generally known as the Isan region) region borders Laos, which, along with Myanmar, is a key area for methamphetamine trafficking. As one of the poorest regions in Thailand, northeastern Thailand is highly vulnerable to drug trade and consumption due to economic hardships. Criminal networks exploit the socio-economic instability to push drugs like meth (locally known as yaba, meaning “crazy medicine”), which has become increasingly affordable. Studies suggest that drug use in the area has surged as prices have dropped significantly, making drugs more accessible​.</p>
+<p>This code categorizes each spatial unit into one of four quadrants according to the type of spatial autocorrelation (high-high, low-low, high-low, or low-high) determined by the local Moran’s I values and the spatial lag of number of drug use cases. Units with non-significant Moran’s I values are placed in quadrant 0, signifying no significant spatial autocorrelation.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>lisa_sig <span class="ot">&lt;-</span> lisa <span class="sc">%&gt;%</span></span>
 <span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_ii <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
@@ -982,7 +998,8 @@ alternative hypothesis: greater</code></pre>
 <span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span> <span class="co"># grey (not statistically significant)</span></span>
 <span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_shape</span>(lisa_sig) <span class="sc">+</span></span>
 <span id="cb61-5"><a href="#cb61-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"mean"</span>) <span class="sc">+</span></span>
-<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="co"># overlay colours</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span> <span class="co"># overlay colours</span></span>
+<span id="cb61-7"><a href="#cb61-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_text</span>(<span class="st">"ADM1_EN"</span>, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: One tm layer group has duplicated layer types, which are omitted. To
 draw multiple layers of the same type, use multiple layer groups (i.e. specify
@@ -996,9 +1013,23 @@ tm_shape prior to each of them).</code></pre>
 </div>
 </div>
 </div>
+<p>Low-high: Regions with low values and neighboring regions with high values (negative deviation with positive local Moran’s I). This quadrant identifies low-value outliers surrounded by high-value areas.</p>
+<p>High-low: Regions with high values and neighboring regions with low values (positive deviation with negative local Moran’s I). This quadrant identifies high-value outliers surrounded by low-value areas.</p>
+<p>Low-low: Regions with low values and neighboring regions also with low values (negative deviation with negative local Moran’s I). This identifies clusters of low values, where both the region and its neighbors have similarly low values.</p>
+<p>High-high: Regions with high values and neighboring regions also with high values (positive deviation with positive local Moran’s I). This identifies clusters of high values, where both the region and its neighbors have high values.</p>
+<p>High-high and low-low are considered clusters. High-low and low-high are considered outliers.</p>
+<p>Nonthaburi and Samut Sakhon are low-high (regions with low values and neighboring regions with high values) while Samut Prakan and Chachoengsao are high-high (regions with high values and neighboring regions also with high values). The rest are not statistically significant. Nonthaburi and Samut Sakhon are considered outliers with regards to the rate of drug use in which they have considerably low drug use as compared to its neighbours while Samut Prakan and Chachoengsao are considered clusters of high drug use activity.</p>
+<p>Notably, Samut Prakan is one of the smallest states in Thailand, is located right next to Bangkok, and hosts Suvarnabhumi Airport, the main international airport serving Bangkok. The fact that major drug busts happened there makes sense, as it is the place where drugs can be trafficked out of the country.</p>
+<p>The Chachoengsao region and its surrounding areas, such as Bangkok, are experiencing high rates of drug use due to their strategic location and socioeconomic conditions. Chachoengsao is part of Thailand’s eastern seaboard industrial zone, which has seen significant economic growth. However, the influx of migrant labor and urbanization associated with this development has created opportunities for drug traffickers to establish strong networks. Drug trafficking routes passing through these regions, particularly from neighboring countries like Myanmar and Laos, have contributed to higher availability of yaba, making it more accessible to the population.</p>
+<p>Additionally, large-scale drug busts in Chachoengsao have highlighted the area’s involvement in the broader regional drug trade. The proximity to Bangkok further exacerbates the issue, as the capital is a major distribution hub for illicit drugs, making surrounding areas like Chachoengsao vulnerable to higher drug use rates due to spillover effects from urban centers.</p>
+<p>Nonthaburi is a well-developed urban province adjacent to Bangkok. While drug trafficking issues impact surrounding areas, Nonthaburi has focused on improving infrastructure and social services, which likely contributes to its lower drug use rate. The city’s development has attracted more middle-class residents, and its proximity to central Bangkok means that law enforcement and social services are more accessible. As a result, the region may experience less of the socioeconomic challenges that contribute to higher drug use in less affluent neighboring areas.</p>
+<p>Although Samut Sakhon has been involved in major drug busts, particularly related to trafficking networks, the local population might not be as heavily impacted by widespread drug use. The province has been the site of significant law enforcement efforts to crack down on drug trafficking. Recent raids in 2023 and earlier have targeted major trafficking rings, which has likely reduced the availability of drugs locally. These strict law enforcement actions, combined with the province’s growing industrial economy, may have helped suppress higher rates of drug use within the general population, despite occasional drug-related incidents in entertainment venues.</p>
+<p>With that said, both Nonthaburi and Samut Sakhon still has high rates of drug use as compared to the rest of Thailand. They just pale in comparison to Bangkok and its other surrounding states.</p>
 </section>
 <section id="getis-ord-gi-statistic" class="level3">
 <h3 class="anchored" data-anchor-id="getis-ord-gi-statistic">Getis-Ord Gi Statistic</h3>
+<p>Hotspot and coldspot analysis is a spatial statistical method used to pinpoint areas where high or low values of a specific variable cluster together geographically. It aids in uncovering significant spatial patterns, emphasizing regions where extreme values, either high or low, are concentrated.</p>
+<p>We need to use data from nearest neighbour column to calculate the inverse of the distance between each neighbour.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>wm_idw <span class="ot">&lt;-</span> wm_q <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">wts =</span> <span class="fu">st_inverse_distance</span>(nb, geometry, <span class="at">scale =</span> <span class="dv">1</span>, <span class="at">alpha =</span> <span class="dv">1</span>), <span class="at">.before =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -1011,6 +1042,7 @@ Caused by warning in `st_point_on_surface.sfc()`:
 ! st_point_on_surface may not give correct results for longitude/latitude data</code></pre>
 </div>
 </div>
+<p>Areas with higher Gi values in Getis-Ord Gi analysis represent hotspots, in which regions with a higher than expected GDP per capita cluster together. Note that hotspots and coldspots are not considered outliers.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>HCSA <span class="ot">&lt;-</span> wm_idw <span class="sc">%&gt;%</span></span>
 <span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">local_Gi =</span> <span class="fu">local_gstar_perm</span>(cases, nb, wt, <span class="at">nsim =</span> <span class="dv">99</span>), <span class="at">.before =</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> <span class="fu">unnest</span>(local_Gi)</span>
@@ -1052,7 +1084,8 @@ Geodetic CRS:  WGS 84
 <span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
 <span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_shape</span>(HCSA_sig) <span class="sc">+</span></span>
 <span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"gi_star"</span>) <span class="sc">+</span></span>
-<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb70-7"><a href="#cb70-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_text</span>(<span class="st">"ADM1_EN"</span>, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">0.5</span>, <span class="at">remove.overlap =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: One tm layer group has duplicated layer types, which are omitted. To
 draw multiple layers of the same type, use multiple layer groups (i.e. specify
@@ -1069,6 +1102,12 @@ tm_shape prior to each of them).</code></pre>
 </div>
 </div>
 </div>
+<p>A high Gi value (positive z-score) indicates a hotspot, meaning the area has a concentration of high values (e.g., high drug use rates) surrounded by other areas with similarly high values. This means that not only is the value in that area high, but the surrounding areas also exhibit high values, forming a cluster of high-intensity activity.</p>
+<p>A low Gi value (negative z-score) indicates a coldspot, meaning the area has a concentration of low values surrounded by other areas with similarly low values. A low cluster suggests that the area and its neighbors are consistently below the overall average, indicating a region of low intensity.</p>
+<p>The states of Kamphaeng Phet, Nakhon Sawan, and Sing Buri are coldspots, which means that they make up a region where drug use rates are consistently lower than in other areas, indicating a relative safe zone or area with better controls. They make up the region of central Thailand, which generally has a lower drug use rate as compared to the rest of Thailand.</p>
+<p>These states are geographically further from the Golden Triangle, a notorious drug-producing area in northern Thailand and neighboring Myanmar. The proximity of the northern provinces to the Golden Triangle results in higher drug use due to easier access to yaba, which is cheaper and more abundant in those areas. In contrast, central provinces are farther removed from these direct supply routes, which reduces the availability and affordability of drugs like meth in the local market.</p>
+<p>The state of Samut Prakan is a hotspot, suggesting that drug use is significantly higher in that area compared to others, and this pattern is consistent across neighboring areas.</p>
+<p>Its proximity to Bangkok and its significant industrial zones make it an attractive location for smugglers and distributors. Law enforcement efforts have frequently uncovered large drug stashes in the area, including recent raids that seized millions of methamphetamine pills and large quantities of ketamine. Samut Prakan’s well-developed transportation infrastructure is also exploited by traffickers to smuggle drugs both within Thailand and internationally. Additionally, the local drug subculture in certain districts, including the use of venues like private houses for drug parties, indicates a high local demand, further contributing to the region’s elevated drug use. Efforts to curb drug activity have focused on small-scale dealers and tracking the networks that operate in the area​.</p>
 </section>
 </section>
 </section>
@@ -1104,6 +1143,8 @@ tm_shape prior to each of them).</code></pre>
 </section>
 <section id="conclusion-2" class="level1">
 <h1>Conclusion</h1>
+<p>Based on the analysis, while there is a slight tendency for neighboring states to have similar drug case rates, this pattern is not strong enough to be considered a major driver of drug abuse across Thailand. For instance, statistical analysis using Moran’s I and Geary’s C indicates a lack of significant spatial autocorrelation in drug cases across states, which indicates weak spatial autocorrelation. The spatial distribution of drug cases also appears to be largely random, with no clear geographic clustering. Factors like socioeconomic conditions, law enforcement effectiveness, and drug trafficking routes likely play a more significant role in determining drug case numbers. Specific regions, such as the Kra Isthmus and northeastern Thailand, have been identified as hotspots with higher drug abuse rates, likely influenced by factors like drug trafficking and socioeconomic conditions. Conversely, regions like Kamphaeng Phet, Nakhon Sawan, and Sing Buri have been identified as coldspots with lower drug abuse rates.</p>
+<p>Overall, while geography may play a minor role in the distribution of drug cases, it is not the primary driver. Public health interventions and law enforcement strategies should focus on addressing broader factors such as socioeconomic conditions, drug trafficking networks, and local-level factors to effectively combat drug abuse in Thailand.</p>
 
 
 </section>
