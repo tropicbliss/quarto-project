@@ -1,6 +1,8 @@
 ---
 title: "Hands-on Exercise 7/8"
 author: "Eugene Toh"
+execute:
+  freeze: true
 ---
 
 # Geographical Segmentation with Spatially Constrained Clustering Techniques
