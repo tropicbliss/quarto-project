@@ -8,7 +8,7 @@
 
 <meta name="author" content="Eugene Toh">
 
-<title>IS415-GAA - In-class Exercise 5</title>
+<title>IS415-GAA - In-class Exercise 7</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,40 +20,6 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
-}
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -234,14 +200,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#cluster-analysis" id="toc-cluster-analysis" class="nav-link active" data-scroll-target="#cluster-analysis">Cluster analysis</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">In-class Exercise 5</h1>
+<h1 class="title">In-class Exercise 7</h1>
 </div>
 
 
@@ -264,67 +236,120 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(GWmodel, sf, spdep, tmap, tidyverse, knitr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>hunan <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="at">dsn =</span> <span class="st">"data/geospatial"</span>, <span class="at">layer =</span> <span class="st">"Hunan"</span>)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>hunan2012 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/aspatial/Hunan_2012.csv"</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>hunan <span class="ot">&lt;-</span> <span class="fu">left_join</span>(hunan, hunan2012) <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, <span class="dv">7</span>, <span class="dv">15</span>, <span class="dv">16</span>, <span class="dv">31</span>, <span class="dv">32</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(hunan, <span class="st">"rds/hunan.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Use <code>echo: false</code> to hide the import.</p>
-<p>GWModel is too old to work with sf, so we have to use sp.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>hunan_sp <span class="ot">&lt;-</span> hunan <span class="sc">%&gt;%</span> <span class="fu">as_Spatial</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>The cool thing about GWModel is that it has features to help us determine the bandwidth. It has two method types, cross validation (<code>"CV"</code>) and AIC.</p>
-<p>To use fixed distance, just change <code>adaptive</code> to <code>FALSE</code>. Note that the output is kilometres instead of metres.</p>
-<p>Note that if using fixed distance, changing types can yield a large difference. Just experiment with the output.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>bw_AIC <span class="ot">&lt;-</span> <span class="fu">bw.gwr</span>(GDPPC <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> hunan_sp, <span class="at">approach =</span> <span class="st">"AIC"</span>, <span class="at">adaptive =</span> <span class="cn">TRUE</span>, <span class="at">kernel =</span> <span class="st">"bisquare"</span>, <span class="at">longlat =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Adaptive bandwidth (number of nearest neighbours): 62 AICc value: 1923.156 
-Adaptive bandwidth (number of nearest neighbours): 46 AICc value: 1920.469 
-Adaptive bandwidth (number of nearest neighbours): 36 AICc value: 1917.324 
-Adaptive bandwidth (number of nearest neighbours): 29 AICc value: 1916.661 
-Adaptive bandwidth (number of nearest neighbours): 26 AICc value: 1914.897 
-Adaptive bandwidth (number of nearest neighbours): 22 AICc value: 1914.045 
-Adaptive bandwidth (number of nearest neighbours): 22 AICc value: 1914.045 </code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>bw_AIC</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 22</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>gwstat <span class="ot">&lt;-</span> <span class="fu">gwss</span>(<span class="at">data =</span> hunan_sp, <span class="at">vars =</span> <span class="st">"GDPPC"</span>, <span class="at">bw =</span> bw_AIC, <span class="at">kernel =</span> <span class="st">"bisquare"</span>, <span class="at">adaptive =</span> <span class="cn">TRUE</span>, <span class="at">longlat =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Note that the parameters for this and bandwidth calculation must be the same. The bandwidth of 22 neighbours gets interpreted as 22 kilometres if you specify it incorrectly.</p>
-<p>This includes self.</p>
-<p>If you go look at <code>gwstat[["SDF"]]@data</code>, it does not have a column that you can easily join with. So first we convert that into a data-frame.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>gwstat_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(gwstat<span class="sc">$</span>SDF)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>hunan_gstat <span class="ot">&lt;-</span> <span class="fu">cbind</span>(hunan, gwstat_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p><code>cbind</code> simply uses the row number to join. This means that the sequence must not change and hence you cannot sort your data.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(hunan_gstat) <span class="sc">+</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"GDPPC_LM"</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">style =</span> <span class="st">"quantile"</span>) <span class="sc">+</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"Distribution of geographically weighted mean"</span>, <span class="at">main.title.position =</span> <span class="st">"center"</span>, <span class="at">main.title.size =</span> <span class="fl">2.0</span>, <span class="at">legend.text.size =</span> <span class="fl">1.2</span>, <span class="at">legend.height =</span> <span class="fl">1.5</span>, <span class="at">legend.width =</span> <span class="fl">1.5</span>, <span class="at">frame =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="In-class_Ex05_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
+<section id="cluster-analysis" class="level1">
+<h1>Cluster analysis</h1>
+<ul>
+<li><p>Data preparation and exploration</p>
+<ul>
+<li><p>Make sure that we normalise the data (e.g., based on population as for instance drug abuse cases is affected by population)</p>
+<ul>
+<li>Multiply it by a number to not see too many decimals to make it clearer</li>
+</ul></li>
+</ul></li>
+<li><p>Data analysis and selecting clustering variables</p>
+<ul>
+<li><p>Checking the distribution of the cluster variables</p></li>
+<li><p>If numbers have too large a range, use standardisation techniques</p>
+<ul>
+<li><p>Z-score (if your data is normally distributed)</p>
+<ul>
+<li>Positive and negative, centre is 0</li>
+</ul></li>
+<li><p>Min-max (highly skewed)</p>
+<ul>
+<li>Outputs numbers between 0 to 1</li>
+</ul></li>
+<li><p>Decimal scaling</p>
+<ul>
+<li>The same as the normalisation method shown above</li>
+</ul></li>
+</ul></li>
+<li><p>Create correlation matrix to visualise linear relationship data</p>
+<ul>
+<li><p>Ellipses that look like a forward slash has a positive correlation and vice versa</p></li>
+<li><p>0 means no linear relationship</p></li>
+<li><p>Ranges from -1 to 1</p></li>
+<li><p>When ellipse is very narrow, there is very strong relationship</p></li>
+</ul></li>
+</ul></li>
+<li><p>Decide on the clustering technique</p>
+<ul>
+<li><p>Agglomerative (more common)</p></li>
+<li><p>Divisive</p></li>
+</ul></li>
+<li><p>Perform cluster analysis</p>
+<ul>
+<li><p>Hierarchical clustering is done with aspatial data</p></li>
+<li><p>For each two pairs of variable, we calculate the similarity</p>
+<ul>
+<li><p>Euclidean distance</p></li>
+<li><p>City-block formula</p></li>
+<li><p>Chebychev distance</p></li>
+</ul></li>
+<li><p>All of them use square roots as the result of clustering have to be the same sign</p></li>
+<li><p>Visualising it</p>
+<ul>
+<li><p>Nested clusters</p></li>
+<li><p>Dendrogram</p>
+<ul>
+<li>The closer each item is grouped together, the more similar they are</li>
+</ul></li>
+</ul></li>
+<li><p>Since we are using hierarchical agglomerative clustering, each iteration subsumes the previous clusters</p></li>
+<li><p>Doing comparisons between agglomerative clustering methods</p>
+<ul>
+<li><p>Methods</p>
+<ul>
+<li><p>Average</p></li>
+<li><p>Single</p></li>
+<li><p>Complete</p></li>
+<li><p>Ward</p></li>
+</ul></li>
+<li><p>The method with the highest agglomerative coefficient is typically the best method</p></li>
+</ul></li>
+</ul></li>
+<li><p>Decide on the number of clusters</p>
+<ul>
+<li><p>Gap statistic method</p>
+<ul>
+<li><p>Input called <code>B</code> that uses permutation to do simulation</p></li>
+<li><p><code>K.max</code> restricts the number of clusters (feel free to use any value depending on how many items you have)</p>
+<ul>
+<li><p>Feel free to experiment with the value</p></li>
+<li><p>Use gap statistics to figure out the best number of clusters</p>
+<ul>
+<li><p>Only analyse values after 3 clusters</p></li>
+<li><p>Then get the <code>k</code> that has the max gap statistic</p></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><p>Validate and interpret the clusters</p>
+<ul>
+<li><p>Check if there are any clusters which have only one member</p>
+<ul>
+<li><p>Data errors</p></li>
+<li><p>One extreme outlier (unlikely)</p>
+<ul>
+<li>You should exclude it out</li>
+</ul></li>
+</ul></li>
+<li><p>Methods</p>
+<ul>
+<li><p>Parallel coordinates</p>
+<ul>
+<li><p>You can try to make it interactive with Plotly</p></li>
+<li><p>You can also split them up into separate graphs for each cluster using facets with <code>GGally</code></p></li>
+<li><p>You can then try and identify how each facets differ to reach a conclusion</p></li>
+</ul></li>
+<li><p>Dendrogram</p></li>
+<li><p>If at the end you find that there is only one variable that is highly correlated, you can use LISA instead.</p></li>
+</ul></li>
+</ul></li>
+</ul>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

@@ -1,0 +1,126 @@
+---
+title: "In-class Exercise 7"
+author: "Eugene Toh"
+execute:
+  freeze: true
+---
+
+# Cluster analysis
+
+-   Data preparation and exploration
+
+    -   Make sure that we normalise the data (e.g., based on population as for instance drug abuse cases is affected by population)
+
+        -   Multiply it by a number to not see too many decimals to make it clearer
+
+-   Data analysis and selecting clustering variables
+
+    -   Checking the distribution of the cluster variables
+
+    -   If numbers have too large a range, use standardisation techniques
+
+        -   Z-score (if your data is normally distributed)
+
+            -   Positive and negative, centre is 0
+
+        -   Min-max (highly skewed)
+
+            -   Outputs numbers between 0 to 1
+
+        -   Decimal scaling
+
+            -   The same as the normalisation method shown above
+
+    -   Create correlation matrix to visualise linear relationship data
+
+        -   Ellipses that look like a forward slash has a positive correlation and vice versa
+
+        -   0 means no linear relationship
+
+        -   Ranges from -1 to 1
+
+        -   When ellipse is very narrow, there is very strong relationship
+
+-   Decide on the clustering technique
+
+    -   Agglomerative (more common)
+
+    -   Divisive
+
+-   Perform cluster analysis
+
+    -   Hierarchical clustering is done with aspatial data
+
+    -   For each two pairs of variable, we calculate the similarity
+
+        -   Euclidean distance
+
+        -   City-block formula
+
+        -   Chebychev distance
+
+    -   All of them use square roots as the result of clustering have to be the same sign
+
+    -   Visualising it
+
+        -   Nested clusters
+
+        -   Dendrogram
+
+            -   The closer each item is grouped together, the more similar they are
+
+    -   Since we are using hierarchical agglomerative clustering, each iteration subsumes the previous clusters
+
+    -   Doing comparisons between agglomerative clustering methods
+
+        -   Methods
+
+            -   Average
+
+            -   Single
+
+            -   Complete
+
+            -   Ward
+
+        -   The method with the highest agglomerative coefficient is typically the best method
+
+-   Decide on the number of clusters
+
+    -   Gap statistic method
+
+        -   Input called `B` that uses permutation to do simulation
+
+        -   `K.max` restricts the number of clusters (feel free to use any value depending on how many items you have)
+
+            -   Feel free to experiment with the value
+
+            -   Use gap statistics to figure out the best number of clusters
+
+                -   Only analyse values after 3 clusters
+
+                -   Then get the `k` that has the max gap statistic
+
+-   Validate and interpret the clusters
+
+    -   Check if there are any clusters which have only one member
+
+        -   Data errors
+
+        -   One extreme outlier (unlikely)
+
+            -   You should exclude it out
+
+    -   Methods
+
+        -   Parallel coordinates
+
+            -   You can try to make it interactive with Plotly
+
+            -   You can also split them up into separate graphs for each cluster using facets with `GGally`
+
+            -   You can then try and identify how each facets differ to reach a conclusion
+
+        -   Dendrogram
+
+        -   If at the end you find that there is only one variable that is highly correlated, you can use LISA instead.
