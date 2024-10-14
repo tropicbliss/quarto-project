@@ -1,8 +1,6 @@
 ---
-title: "Hands-on Exercise 7"
+title: "Hands-on Exercise 7/8"
 author: "Eugene Toh"
-execute:
-  freeze: true
 ---
 
 # Geographical Segmentation with Spatially Constrained Clustering Techniques
@@ -439,8 +437,7 @@ There are [three](https://statweb.stanford.edu/~gwalther/gap) commonly used meth
 
 #### Gap statistic method
 
-The [**gap statistic**](http://www.web.stanford.edu/~hastie/Papers/gap.pdf) compares the total within intra-cluster variation for different values
-of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.
+The [**gap statistic**](http://www.web.stanford.edu/~hastie/Papers/gap.pdf) compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.
 
 To compute the gap statistic, [*clusGap()*](https://www.rdocumentation.org/packages/cluster/versions/2.1.0/topics/clusGap) of [**cluster**](https://cran.r-project.org/web/packages/cluster/index.html) package will be used.
 
@@ -463,8 +460,7 @@ Next, we can visualise the plot by using [*fviz_gap_stat()*](https://rpkgs.datan
 fviz_gap_stat(gap_stat)
 ```
 
-With reference to the gap statistic graph above, the recommended number of cluster to retain is 1. However, it is not logical to retain only one cluster. By examine the gap statistic graph, the 6-cluster gives the largest gap statistic and should be the next best cluster to
-pick.
+With reference to the gap statistic graph above, the recommended number of cluster to retain is 1. However, it is not logical to retain only one cluster. By examine the gap statistic graph, the 6-cluster gives the largest gap statistic and should be the next best cluster to pick.
 
 **Note:** In addition to these commonly used approaches, the [NbClust](https://cran.r-project.org/web/packages/NbClust/) package, published by Charrad et al., 2014, provides 30 indices for determining the relevant number of clusters and proposes to users the best clustering scheme from the different results obtained by varying all combinations of number of clusters, distance measures, and clustering methods.
 
@@ -554,3 +550,300 @@ qtm(shan_sf_cluster, "CLUSTER")
 ```
 
 The choropleth map above reveals the clusters are very fragmented. The is one of the major limitation when non-spatial clustering algorithm such as hierarchical cluster analysis method is used.
+
+# Spatially Constrained Clustering
+
+## SKATER approach
+
+### Converting into `SpatialPolygonsDataFrame`
+
+First, we need to convert `shan_sf` into a `SpatialPolygonsDataFrame` because the `SKATER` function only supports `sp` objects, such as `SpatialPolygonsDataFrame`. The code snippet below uses the `as_Spatial()` function from the `sf` package to convert `shan_sf` into a `SpatialPolygonsDataFrame` named `shan_sp`.
+
+```{r}
+shan_sp <- as_Spatial(shan_sf)
+```
+
+### Computing neighbour list
+
+Next, the `poly2nb()` function from the `spdep` package will be used to generate the neighbors list from the polygon data.
+
+```{r}
+shan.nb <- poly2nb(shan_sp)
+summary(shan.nb)
+```
+
+Now we need to plot the boundaries and visualise the nearest neighbour relationships.
+
+```{r}
+coords <- st_coordinates(
+  st_centroid(st_geometry(shan_sf)))
+plot(st_geometry(shan_sf), 
+     border=grey(.5))
+plot(shan.nb,
+     coords, 
+     col="blue", 
+     add=TRUE)
+```
+
+Since we are using `plot`, the individual map layers and how they are drawn is determined by which comes first.
+
+### Computing minimum spanning tree
+
+#### Calculating edge costs
+
+Next, the `nbcosts()` function from the `spdep` package is used to calculate the cost of each edge, which represents the distance between its nodes. This function computes the distance using a data frame with observation vectors for each node.
+
+The code snippet below is used to calculate the cost of each edge.
+
+```{r}
+lcosts <- nbcosts(shan.nb, shan_ict)
+```
+
+For each observation, this provides the pairwise dissimilarity between its values for the five variables and those of its neighboring observations (based on the neighbor list). Essentially, this represents a generalized weight for a spatial weights matrix.
+
+Next, we will incorporate these costs into a weights object, similar to how we calculated inverse distance weights. Specifically, we convert the neighbor list into a list weights object by assigning the previously computed `lcosts` as the weights.
+
+To achieve this, the `nb2listw()` function from the `spdep` package is used, as demonstrated in the code snippet below.
+
+Note that we specify the style as "B" to ensure the cost values are not row-standardized.
+
+```{r}
+shan.w <- nb2listw(shan.nb, 
+                   lcosts, 
+                   style="B")
+summary(shan.w)
+```
+
+### Computing minimum spanning tree
+
+The minimum spanning tree is computed by mean of the [*mstree()*](https://r-spatial.github.io/spdep/reference/mstree.html) of **spdep** package as shown in the code chunk below.
+
+```{r}
+shan.mst <- mstree(shan.w)
+```
+
+After computing the MST, we can check its class and dimension by using the code chunk below.
+
+```{r}
+class(shan.mst)
+```
+
+```{r}
+dim(shan.mst)
+```
+
+Note that the dimension is 54 and not 55. This is because the minimum spanning tree consists on n-1 edges (links) in order to traverse all the nodes.
+
+We can display the content of *shan.mst* by using *head()* as shown in the code chunk below.
+
+```{r}
+head(shan.mst)
+```
+
+The plot method for the MST include a way to show the observation numbers of the nodes in addition to the edge. As before, we plot this together with the township boundaries. We can see how the initial neighbour list is simplified to just one edge connecting each of the
+nodes, while passing through all the nodes.
+
+```{r}
+plot(st_geometry(shan_sf), 
+                 border=gray(.5))
+plot.mst(shan.mst, 
+         coords, 
+         col="blue", 
+         cex.lab=0.7, 
+         cex.circles=0.005, 
+         add=TRUE)
+```
+
+### Computing spatially constrained clusters using SKATER method
+
+The code snippet below calculates the spatially constrained clusters using the `skater()` function from the `spdep` package.
+
+```{r}
+clust6 <- spdep::skater(edges = shan.mst[,1:2], 
+                 data = shan_ict, 
+                 method = "euclidean", 
+                 ncuts = 5)
+```
+
+The `skater()` function requires three mandatory arguments:
+
+-   the first two columns of the MST matrix (excluding the cost),
+
+-   the data matrix (used to update costs as units are grouped),
+
+-   and the number of cuts, which is set to one less than the desired number of clusters (i.e., the specified value represents the number of cuts in the graph, not the number of clusters).
+
+The output of `skater()` is an object of class `skater`. You can inspect its contents using the code snippet below.
+
+```{r}
+str(clust6)
+```
+
+The most interesting component of this list structure is the groups vector containing the labels of the cluster to which each observation belongs (as before, the label itself is arbitary). This is followed by a detailed summary for each of the clusters in the edges.groups list. Sum of squares measures are given as ssto for the total and ssw to show the effect of each of the cuts on the overall criterion.
+
+We can check the cluster assignment by using the conde chunk below.
+
+```{r}
+ccs6 <- clust6$groups
+ccs6
+```
+
+We can find out how many observations are in each cluster by means of the table command. Parenthetially, we can also find this as the dimension of each vector in the lists contained in edges.groups. For example, the first list has node with dimension 12, which is also the number of observations in the first cluster.
+
+```{r}
+table(ccs6)
+```
+
+Lastly, we can also plot the pruned tree that shows the five clusters on top of the townshop area.
+
+```{r}
+plot(st_geometry(shan_sf), 
+     border=gray(.5))
+plot(clust6, 
+     coords, 
+     cex.lab=.7,
+     groups.colors=c("red","green","blue", "brown", "pink"),
+     cex.circles=0.005, 
+     add=TRUE)
+```
+
+### Visualising the clusters in choropleth map
+
+The following code snippet is used to visualize the clusters generated by the SKATER method.
+
+```{r}
+groups_mat <- as.matrix(clust6$groups)
+shan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>%
+  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)
+qtm(shan_sf_spatialcluster, "SP_CLUSTER")
+```
+
+To make comparison simpler, it's more effective to display the hierarchical clustering map alongside the spatially constrained hierarchical clustering map.
+
+```{r}
+hclust.map <- qtm(shan_sf_cluster,
+                  "CLUSTER") + 
+  tm_borders(alpha = 0.5)
+shclust.map <- qtm(shan_sf_spatialcluster,
+                   "SP_CLUSTER") + 
+  tm_borders(alpha = 0.5)
+tmap_arrange(hclust.map, shclust.map,
+             asp=NA, ncol=2)
+```
+
+## ClustGeo approach
+
+In this section, you'll get practical experience with the ClustGeo package, using its functions to conduct both traditional hierarchical clustering and spatially constrained cluster analysis.
+
+The ClustGeo package in R is designed for spatially constrained cluster analysis, offering a Ward-like hierarchical algorithm called `hclustgeo()`, which incorporates spatial/geographical constraints. The algorithm uses two dissimilarity matrices, D0 (for attribute space) and D1 (for constraint space), and a mixing parameter alpha (ranging from 0 to 1). D0 can be non-Euclidean, and observation weights can be non-uniform. The goal is to find an alpha value that increases spatial contiguity while maintaining solution quality, assisted by the `choicealpha()` function.
+
+The ClustGeo package offers the `hclustgeo()` function for Ward-like hierarchical clustering, similar to `hclust()`. For non-spatially constrained clustering, simply provide a dissimilarity matrix, as shown in the code snippet below.
+
+```{r}
+nongeo_cluster <- hclustgeo(proxmat)
+plot(nongeo_cluster, cex = 0.5)
+rect.hclust(nongeo_cluster, 
+            k = 6, 
+            border = 2:5)
+```
+
+```{r}
+groups <- as.factor(cutree(nongeo_cluster, k=6))
+```
+
+```{r}
+shan_sf_ngeo_cluster <- cbind(shan_sf, as.matrix(groups)) %>%
+  rename(`CLUSTER` = `as.matrix.groups.`)
+```
+
+```{r}
+qtm(shan_sf_ngeo_cluster, "CLUSTER")
+```
+
+To perform spatially constrained hierarchical clustering, a spatial distance matrix is derived using `st_distance()` from the `sf` package, with `as.dist()` converting the data frame to a matrix.
+
+Next, `choicealpha()` determines a suitable alpha value. Based on the graphs above, we’ll use alpha = 0.2. Then, `cutree()` generates the cluster object, which is joined back to the `shan_sf` polygon feature data frame.
+
+Finally, the newly defined spatially constrained clusters can be plotted.
+
+```{r}
+dist <- st_distance(shan_sf, shan_sf)
+distmat <- as.dist(dist)
+```
+
+```{r}
+cr <- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K=6, graph = TRUE)
+```
+
+```{r}
+clustG <- hclustgeo(proxmat, distmat, alpha = 0.2)
+```
+
+```{r}
+groups <- as.factor(cutree(clustG, k=6))
+```
+
+```{r}
+shan_sf_Gcluster <- cbind(shan_sf, as.matrix(groups)) %>%
+  rename(`CLUSTER` = `as.matrix.groups.`)
+```
+
+```{r}
+qtm(shan_sf_Gcluster, "CLUSTER")
+```
+
+## Visual interpretation of clusters
+
+The code below shows the distribution of the clustering variable `RADIO_PR` by cluster.
+
+```{r}
+ggplot(data = shan_sf_ngeo_cluster,
+       aes(x = CLUSTER, y = RADIO_PR)) +
+  geom_boxplot()
+```
+
+The boxplot indicates that Cluster 3 has the highest mean radio ownership per thousand households, followed by Clusters 2, 1, 4, 6, and 5.
+
+Studies have shown that parallel coordinate plots effectively reveal clustering variables by cluster. In the code below, `ggparcoord()` from the GGally package is used.
+
+```{r}
+ggparcoord(data = shan_sf_ngeo_cluster, 
+           columns = c(17:21), 
+           scale = "globalminmax",
+           alphaLines = 0.2,
+           boxplot = TRUE, 
+           title = "Multiple Parallel Coordinates Plots of ICT Variables by Cluster") +
+  facet_grid(~ CLUSTER) + 
+  theme(axis.text.x = element_text(angle = 30))
+```
+
+The plot shows that households in Cluster 4 own the most TVs and mobile phones, while Cluster 5 households own the least of all five ICTs.
+
+The `scale` argument in `ggparcoord()` offers several scaling methods:
+
+-   `std`: standardizes by subtracting the mean and dividing by the standard deviation.
+
+-   `robust`: uses the median and median absolute deviation.
+
+-   `uniminmax`: scales variables between 0 and 1.
+
+-   `globalminmax`: no scaling; range is set by the global min and max.
+
+-   `center`: centers each variable after scaling.
+
+-   `centerObs`: centers each variable at a specific observation.
+
+There’s no single best method; choose the one that fits your analysis.
+
+Lastly, summary statistics (mean, median, etc.) can complement the visual interpretation. In the code below, `group_by()` and `summarise()` from `dplyr` calculate the mean values for the clustering variables.
+
+```{r}
+shan_sf_ngeo_cluster %>% 
+  st_set_geometry(NULL) %>%
+  group_by(CLUSTER) %>%
+  summarise(mean_RADIO_PR = mean(RADIO_PR),
+            mean_TV_PR = mean(TV_PR),
+            mean_LLPHONE_PR = mean(LLPHONE_PR),
+            mean_MPHONE_PR = mean(MPHONE_PR),
+            mean_COMPUTER_PR = mean(COMPUTER_PR))
+```

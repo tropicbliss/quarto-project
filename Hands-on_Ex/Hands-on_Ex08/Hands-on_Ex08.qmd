@@ -1,0 +1,16 @@
+---
+title: "Hands-on Exercise 8"
+author: "Eugene Toh"
+---
+
+# Spatially Constrained Clustering
+
+## SKATER approach
+
+### Converting into `SpatialPolygonsDataFrame`
+
+First, we need to convert `shan_sf` into a `SpatialPolygonsDataFrame` because the `SKATER` function only supports `sp` objects, such as `SpatialPolygonsDataFrame`. The code snippet below uses the `as_Spatial()` function from the `sf` package to convert `shan_sf` into a `SpatialPolygonsDataFrame` named `shan_sp`.
+
+## ClustGeo approach
+
+## Visual interpretation of clusters
