@@ -1,0 +1,134 @@
+---
+title: "In-class Exercise 7"
+author: "Eugene Toh"
+execute:
+  freeze: true
+---
+
+## Hierarchical clustering
+
+```         
+proxmat <- dist(shan_ict, method = "euclidean") # euclidean can be used as a parameter for shiny
+hclust_ward <- hclust(proxmat, method = "ward.D")
+groups <- as.factor(cutree(hclust_ward, k=6))
+```
+
+Don't hardcode `k`. Instead the user should be the one to decide based on the graph.
+
+## Append to the geospatial data
+
+```         
+shan_sf_cluster <- cbind(shan_sf, as.matrix(groups)) %>% rename(CLUSTER=as.matrix.groups.) %>% select(-c(3:4, 7:9)) %>% rename(TS = TS.x)
+```
+
+## The dendrogram
+
+```         
+plot(hclust_ward, cex = 0.6)
+rect.hclust(hclust_ward, k = 6, border = 2:5)
+```
+
+## Cluster map
+
+```         
+qtm(shan_sf_cluster, "CLUSTER")
+```
+
+SKATER uses distance to determine relationships. You then use your cluster data to add weights to each edge, and then partition the graph into individual trees for nodes with highest dissimilarity. But each point will require at least a single edge.
+
+If you have polygons it uses centroids.
+
+## Spatially constrained clustering: SKATER method
+
+```         
+shan.nb <- poly2nb(shan_sf) # spdep supports sf in its newest version now (as_Spatial is no longer necessary)
+summary(shan.nb)
+```
+
+```         
+plot(st_geometry(shan_sf), border = grey(.5))
+pts <- st_coordinates(st_centroid(shan_sf))
+plot(shan.nb, pts, col = "blue", add = TRUE)
+```
+
+### Computing minimum spanning tree
+
+#### Calculating edge costs
+
+```         
+lcosts <- nbcosts(shan.nb, shan_ict)
+```
+
+#### Incorporating these costs into a weights object
+
+```         
+shan.w <- nb2listw(shan.nb, lcosts, style = "B") # (use "B" because you want to know neighbour or not neighbour, do not use this as argument)
+summary(shan.w)
+```
+
+#### Computing MST
+
+```         
+shan.mst <- mstree(shan.w)
+```
+
+#### Visualising MST
+
+```         
+plot(st_geometry(shan_sf), border = gray(.5))
+plot.mst(shan.mst, pts, col = "blue", cex.lab = 0.7, cex.circles = 0.005, add = TRUE)
+```
+
+### Plotting SKATER tree
+
+```         
+skater.clust6 <- skater(edges = shan.mst[,1:2], data = shan_ict, method = "euclidean", ncuts = 5)
+```
+
+```         
+plot(st_geometry(shan_sf), border = gray(.5))
+plot.mst(skater.clust6, pts, cex.lab = 0.7, groups.colors = c("red", "green", "blue", "brown", "pink"), cex.circles = 0.005, add = TRUE)
+```
+
+### Visualising the clusters in choropleth map
+
+```         
+groups_mat <- as.matrix(skater.clust6$groups)
+shan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>% rename(`skater_CLUSTER`=`as.factor.groups_mat.`) # use as.factor to convert to numerical form so it can be sorted
+qtm(shan_sf_spatialcluster, "skater_CLUSTER")
+```
+
+## Spatially constrained clustering: ClustGEO method
+
+```         
+cr <- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K = 6, graph = TRUE)
+```
+
+### Saving output
+
+```         
+clustG <- hclustgeo(proxmat, distmat, alpha = 0.2)
+groups <- as.factor(cutree(clustG, k = 6))
+shan_sf_clustGeo <- cbind(shan_sf, as.matrix(groups)) %>% rename(`clustGeo`=`as.matrix.groups.`)
+```
+
+### Visualising
+
+```         
+qtm(shan_sf_clustGeo, "clustGeo")
+```
+
+## Computing spatial distance matrix
+
+```         
+dist <- st_distance(shan_sf, shan_sf)
+distmat <- as.dist(dist)
+```
+
+## Interactive cluster plot
+
+```         
+ggparcoord(data = shan_sf_clustGeo, columns = c(17:21), scale = "globalminmax", alphaLines = 0.2, boxplot = TRUE, title = "") + facet_grid(~clustGeo) + theme(axis.text.x = element_text(angle = 30))
+```
+
+The reason to compare multiple cluster maps side by side is to check for whether a variable is correlated with another.

@@ -6,8 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Eugene Toh">
 
-<title>IS415-GAA - In-class Exercise 4</title>
+<title>IS415-GAA - In-class Exercise 7</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -19,40 +20,6 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
-}
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -237,20 +204,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#hierarchical-clustering" id="toc-hierarchical-clustering" class="nav-link active" data-scroll-target="#hierarchical-clustering">Hierarchical clustering</a></li>
+  <li><a href="#append-to-the-geospatial-data" id="toc-append-to-the-geospatial-data" class="nav-link" data-scroll-target="#append-to-the-geospatial-data">Append to the geospatial data</a></li>
+  <li><a href="#the-dendrogram" id="toc-the-dendrogram" class="nav-link" data-scroll-target="#the-dendrogram">The dendrogram</a></li>
+  <li><a href="#cluster-map" id="toc-cluster-map" class="nav-link" data-scroll-target="#cluster-map">Cluster map</a></li>
+  <li><a href="#spatially-constrained-clustering-skater-method" id="toc-spatially-constrained-clustering-skater-method" class="nav-link" data-scroll-target="#spatially-constrained-clustering-skater-method">Spatially constrained clustering: SKATER method</a>
+  <ul class="collapse">
+  <li><a href="#computing-minimum-spanning-tree" id="toc-computing-minimum-spanning-tree" class="nav-link" data-scroll-target="#computing-minimum-spanning-tree">Computing minimum spanning tree</a></li>
+  <li><a href="#plotting-skater-tree" id="toc-plotting-skater-tree" class="nav-link" data-scroll-target="#plotting-skater-tree">Plotting SKATER tree</a></li>
+  <li><a href="#visualising-the-clusters-in-choropleth-map" id="toc-visualising-the-clusters-in-choropleth-map" class="nav-link" data-scroll-target="#visualising-the-clusters-in-choropleth-map">Visualising the clusters in choropleth map</a></li>
+  </ul></li>
+  <li><a href="#spatially-constrained-clustering-clustgeo-method" id="toc-spatially-constrained-clustering-clustgeo-method" class="nav-link" data-scroll-target="#spatially-constrained-clustering-clustgeo-method">Spatially constrained clustering: ClustGEO method</a>
+  <ul class="collapse">
+  <li><a href="#saving-output" id="toc-saving-output" class="nav-link" data-scroll-target="#saving-output">Saving output</a></li>
+  <li><a href="#visualising" id="toc-visualising" class="nav-link" data-scroll-target="#visualising">Visualising</a></li>
+  </ul></li>
+  <li><a href="#computing-spatial-distance-matrix" id="toc-computing-spatial-distance-matrix" class="nav-link" data-scroll-target="#computing-spatial-distance-matrix">Computing spatial distance matrix</a></li>
+  <li><a href="#interactive-cluster-plot" id="toc-interactive-cluster-plot" class="nav-link" data-scroll-target="#interactive-cluster-plot">Interactive cluster plot</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">In-class Exercise 4</h1>
+<h1 class="title">In-class Exercise 7</h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Eugene Toh </p>
+          </div>
+  </div>
     
   
     
@@ -261,200 +256,95 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf, raster, spatstat, sparr, tmap, tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>geography <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"data/rawdata"</span>) <span class="sc">%&gt;%</span> <span class="fu">st_union</span>() <span class="sc">%&gt;%</span> <span class="fu">st_zm</span>(<span class="at">drop =</span> <span class="cn">TRUE</span>, <span class="at">what =</span> <span class="st">"ZM"</span>) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="at">crs =</span> <span class="dv">32748</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Reading layer `Kepulauan_Bangka_Belitung' from data source 
-  `/home/tropicbliss/GitHub/quarto-project/In-class_Ex/In-class_Ex04/data/rawdata' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 298 features and 27 fields
-Geometry type: POLYGON
-Dimension:     XYZ
-Bounding box:  xmin: 105.1085 ymin: -3.116593 xmax: 106.8488 ymax: -1.501603
-z_range:       zmin: 0 zmax: 0
-Geodetic CRS:  WGS 84</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>st_as_s2(): dropping Z and/or M coordinate</code></pre>
-</div>
-</div>
-<p>Polygon Z: polygons with height data, you need to remove it.</p>
-<p>Converting it into owin:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>kbb_owin <span class="ot">&lt;-</span> <span class="fu">as.owin</span>(geography)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>kbb_owin</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>window: polygonal boundary
-enclosing rectangle: [512066.8, 705559.4] x [9655398, 9834006] units</code></pre>
-</div>
-</div>
-<p>Checking whether it is really an owin:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">class</span>(kbb_owin)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "owin"</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fire_sf <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/rawdata/forestfires.csv"</span>) <span class="sc">%&gt;%</span> <span class="fu">st_as_sf</span>(<span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"longitude"</span>, <span class="st">"latitude"</span>), <span class="at">crs =</span> <span class="dv">4326</span>) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="at">crs =</span> <span class="dv">32748</span>) <span class="co"># do not switch order of latlong</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Rows: 741 Columns: 15
-── Column specification ────────────────────────────────────────────────────────
-Delimiter: ","
-chr   (3): satellite, instrument, daynight
-dbl  (11): latitude, longitude, brightness, scan, track, acq_time, confidenc...
-date  (1): acq_date
-
-ℹ Use `spec()` to retrieve the full column specification for this data.
-ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-</div>
-</div>
-<p>Now, you want separate fields for day, month, and year for easier data filtering. The <code>DayOfYear</code> field takes the number of days in a year into account.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>fire_sf <span class="ot">&lt;-</span> fire_sf <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">DayOfYear =</span> <span class="fu">yday</span>(acq_date)) <span class="sc">%&gt;%</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Month_num =</span> <span class="fu">month</span>(acq_date)) <span class="sc">%&gt;%</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Month_fac =</span> <span class="fu">month</span>(acq_date, <span class="at">label =</span> <span class="cn">TRUE</span>, <span class="at">abbr =</span> <span class="cn">FALSE</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(geography) <span class="sc">+</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_polygons</span>() <span class="sc">+</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_shape</span>(fire_sf) <span class="sc">+</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_dots</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="In-class_Ex04_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Use <code>tm_symbols</code> or <code>tm_markers</code> if you have a custom point logo.</p>
-<p>Polygon &gt; line &gt; point.</p>
-<p>A facet is a set of maps.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(geography) <span class="sc">+</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_polygons</span>() <span class="sc">+</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_shape</span>(fire_sf) <span class="sc">+</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_dots</span>(<span class="at">size =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_facets</span>(<span class="at">by =</span> <span class="st">"Month_fac"</span>, <span class="at">free.coords =</span> <span class="cn">FALSE</span>, <span class="at">drop.units =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="In-class_Ex04_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p><code>free.coords</code> make sure that each map has the same map extent.</p>
-<p>Extracting by month:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>fire_month <span class="ot">&lt;-</span> fire_sf <span class="sc">%&gt;%</span> <span class="fu">select</span>(Month_num)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Creating ppp (to use <code>spatstat</code>):</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>fire_month_ppp <span class="ot">&lt;-</span> <span class="fu">as.ppp</span>(fire_month)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>fire_month_ppp</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Marked planar point pattern: 741 points
-marks are numeric, of storage type  'double'
-window: rectangle = [521564.1, 695791] x [9658137, 9828767] units</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fire_month_ppp)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Marked planar point pattern:  741 points
-Average intensity 2.49258e-08 points per square unit
-
-Coordinates are given to 10 decimal places
-
-marks are numeric, of type 'double'
-Summary:
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  1.000   8.000   9.000   8.579  10.000  12.000 
-
-Window: rectangle = [521564.1, 695791] x [9658137, 9828767] units
-                    (174200 x 170600 units)
-Window area = 29728200000 square units</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>fire_month_owin <span class="ot">&lt;-</span> fire_month_ppp[kbb_owin]</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fire_month_owin)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Marked planar point pattern:  741 points
-Average intensity 6.424519e-08 points per square unit
-
-Coordinates are given to 10 decimal places
-
-marks are numeric, of type 'double'
-Summary:
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  1.000   8.000   9.000   8.579  10.000  12.000 
-
-Window: polygonal boundary
-2 separate polygons (no holes)
-           vertices        area relative.area
-polygon 1     47493 11533600000      1.00e+00
-polygon 2       256      306427      2.66e-05
-enclosing rectangle: [512066.8, 705559.4] x [9655398, 9834006] units
-                     (193500 x 178600 units)
-Window area = 11533900000 square units
-Fraction of frame area: 0.334</code></pre>
-</div>
-</div>
-<p>Spatio-temporal KDE:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>st_kde <span class="ot">&lt;-</span> <span class="fu">spattemp.density</span>(fire_month_owin)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Calculating trivariate smooth...Done.
-Edge-correcting...Done.
-Conditioning on time...Done.</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(st_kde)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Spatiotemporal Kernel Density Estimate
-
-Bandwidths
-  h = 15102.47 (spatial)
-  lambda = 0.0304 (temporal)
-
-No. of observations
-  741 
-
-Spatial bound
-  Type: polygonal
-  2D enclosure: [512066.8, 705559.4] x [9655398, 9834006]
-
-Temporal bound
-  [1, 12]
-
-Evaluation
-  128 x 128 x 12 trivariate lattice
-  Density range: [1.233458e-27, 8.202976e-10]</code></pre>
-</div>
-</div>
-<p>Most of the fires started from July onwards:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>tims <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">7</span>, <span class="dv">8</span>, <span class="dv">9</span>, <span class="dv">10</span>, <span class="dv">11</span>, <span class="dv">12</span>)</span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>))</span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> tims) {</span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(st_kde, i, <span class="at">override.par=</span><span class="cn">FALSE</span>, <span class="at">fix.range=</span><span class="cn">TRUE</span>, <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"KDE at month"</span>, i))</span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="In-class_Ex04_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="1152"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Instead of using month, you can use day which can make the value of lambda more meaningful.</p>
+<section id="hierarchical-clustering" class="level2">
+<h2 class="anchored" data-anchor-id="hierarchical-clustering">Hierarchical clustering</h2>
+<pre><code>proxmat &lt;- dist(shan_ict, method = "euclidean") # euclidean can be used as a parameter for shiny
+hclust_ward &lt;- hclust(proxmat, method = "ward.D")
+groups &lt;- as.factor(cutree(hclust_ward, k=6))</code></pre>
+<p>Don’t hardcode <code>k</code>. Instead the user should be the one to decide based on the graph.</p>
+</section>
+<section id="append-to-the-geospatial-data" class="level2">
+<h2 class="anchored" data-anchor-id="append-to-the-geospatial-data">Append to the geospatial data</h2>
+<pre><code>shan_sf_cluster &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;% rename(CLUSTER=as.matrix.groups.) %&gt;% select(-c(3:4, 7:9)) %&gt;% rename(TS = TS.x)</code></pre>
+</section>
+<section id="the-dendrogram" class="level2">
+<h2 class="anchored" data-anchor-id="the-dendrogram">The dendrogram</h2>
+<pre><code>plot(hclust_ward, cex = 0.6)
+rect.hclust(hclust_ward, k = 6, border = 2:5)</code></pre>
+</section>
+<section id="cluster-map" class="level2">
+<h2 class="anchored" data-anchor-id="cluster-map">Cluster map</h2>
+<pre><code>qtm(shan_sf_cluster, "CLUSTER")</code></pre>
+<p>SKATER uses distance to determine relationships. You then use your cluster data to add weights to each edge, and then partition the graph into individual trees for nodes with highest dissimilarity. But each point will require at least a single edge.</p>
+<p>If you have polygons it uses centroids.</p>
+</section>
+<section id="spatially-constrained-clustering-skater-method" class="level2">
+<h2 class="anchored" data-anchor-id="spatially-constrained-clustering-skater-method">Spatially constrained clustering: SKATER method</h2>
+<pre><code>shan.nb &lt;- poly2nb(shan_sf) # spdep supports sf in its newest version now (as_Spatial is no longer necessary)
+summary(shan.nb)</code></pre>
+<pre><code>plot(st_geometry(shan_sf), border = grey(.5))
+pts &lt;- st_coordinates(st_centroid(shan_sf))
+plot(shan.nb, pts, col = "blue", add = TRUE)</code></pre>
+<section id="computing-minimum-spanning-tree" class="level3">
+<h3 class="anchored" data-anchor-id="computing-minimum-spanning-tree">Computing minimum spanning tree</h3>
+<section id="calculating-edge-costs" class="level4">
+<h4 class="anchored" data-anchor-id="calculating-edge-costs">Calculating edge costs</h4>
+<pre><code>lcosts &lt;- nbcosts(shan.nb, shan_ict)</code></pre>
+</section>
+<section id="incorporating-these-costs-into-a-weights-object" class="level4">
+<h4 class="anchored" data-anchor-id="incorporating-these-costs-into-a-weights-object">Incorporating these costs into a weights object</h4>
+<pre><code>shan.w &lt;- nb2listw(shan.nb, lcosts, style = "B") # (use "B" because you want to know neighbour or not neighbour, do not use this as argument)
+summary(shan.w)</code></pre>
+</section>
+<section id="computing-mst" class="level4">
+<h4 class="anchored" data-anchor-id="computing-mst">Computing MST</h4>
+<pre><code>shan.mst &lt;- mstree(shan.w)</code></pre>
+</section>
+<section id="visualising-mst" class="level4">
+<h4 class="anchored" data-anchor-id="visualising-mst">Visualising MST</h4>
+<pre><code>plot(st_geometry(shan_sf), border = gray(.5))
+plot.mst(shan.mst, pts, col = "blue", cex.lab = 0.7, cex.circles = 0.005, add = TRUE)</code></pre>
+</section>
+</section>
+<section id="plotting-skater-tree" class="level3">
+<h3 class="anchored" data-anchor-id="plotting-skater-tree">Plotting SKATER tree</h3>
+<pre><code>skater.clust6 &lt;- skater(edges = shan.mst[,1:2], data = shan_ict, method = "euclidean", ncuts = 5)</code></pre>
+<pre><code>plot(st_geometry(shan_sf), border = gray(.5))
+plot.mst(skater.clust6, pts, cex.lab = 0.7, groups.colors = c("red", "green", "blue", "brown", "pink"), cex.circles = 0.005, add = TRUE)</code></pre>
+</section>
+<section id="visualising-the-clusters-in-choropleth-map" class="level3">
+<h3 class="anchored" data-anchor-id="visualising-the-clusters-in-choropleth-map">Visualising the clusters in choropleth map</h3>
+<pre><code>groups_mat &lt;- as.matrix(skater.clust6$groups)
+shan_sf_spatialcluster &lt;- cbind(shan_sf_cluster, as.factor(groups_mat)) %&gt;% rename(`skater_CLUSTER`=`as.factor.groups_mat.`) # use as.factor to convert to numerical form so it can be sorted
+qtm(shan_sf_spatialcluster, "skater_CLUSTER")</code></pre>
+</section>
+</section>
+<section id="spatially-constrained-clustering-clustgeo-method" class="level2">
+<h2 class="anchored" data-anchor-id="spatially-constrained-clustering-clustgeo-method">Spatially constrained clustering: ClustGEO method</h2>
+<pre><code>cr &lt;- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K = 6, graph = TRUE)</code></pre>
+<section id="saving-output" class="level3">
+<h3 class="anchored" data-anchor-id="saving-output">Saving output</h3>
+<pre><code>clustG &lt;- hclustgeo(proxmat, distmat, alpha = 0.2)
+groups &lt;- as.factor(cutree(clustG, k = 6))
+shan_sf_clustGeo &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;% rename(`clustGeo`=`as.matrix.groups.`)</code></pre>
+</section>
+<section id="visualising" class="level3">
+<h3 class="anchored" data-anchor-id="visualising">Visualising</h3>
+<pre><code>qtm(shan_sf_clustGeo, "clustGeo")</code></pre>
+</section>
+</section>
+<section id="computing-spatial-distance-matrix" class="level2">
+<h2 class="anchored" data-anchor-id="computing-spatial-distance-matrix">Computing spatial distance matrix</h2>
+<pre><code>dist &lt;- st_distance(shan_sf, shan_sf)
+distmat &lt;- as.dist(dist)</code></pre>
+</section>
+<section id="interactive-cluster-plot" class="level2">
+<h2 class="anchored" data-anchor-id="interactive-cluster-plot">Interactive cluster plot</h2>
+<pre><code>ggparcoord(data = shan_sf_clustGeo, columns = c(17:21), scale = "globalminmax", alphaLines = 0.2, boxplot = TRUE, title = "") + facet_grid(~clustGeo) + theme(axis.text.x = element_text(angle = 30))</code></pre>
+<p>The reason to compare multiple cluster maps side by side is to check for whether a variable is correlated with another.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
