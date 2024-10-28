@@ -1,0 +1,68 @@
+---
+title: "In-class Exercise 10"
+author: "Eugene Toh"
+date: "last-modified"
+execute:
+  freeze: true
+---
+
+``` r
+pacman::p_load(olsrr, ggstatsplot, sf, tmap, tidyverse, gtsummary, performance, see, sfdep)
+```
+
+``` r
+condo_resale <- read_csv("data/aspatial/Condo_resale_2015.csv")
+mpsz <- read_rds("data/rds/mpsz.rds")
+condo_resale_sf <- read_rds("data/rds/condo_resale_sf.rds")
+```
+
+``` r
+ggcormat(condo_resale[, 5:23])
+```
+
+``` r
+condo_mlr <- lm(formula = SELLING_PRICE ~ AREA_SQM..., data = condo_resale_sf)
+summary(condo_mlr)
+```
+
+``` r
+ols_regress(condo_mlr)
+```
+
+``` r
+metric <- compare_performance(condo_mlr, condo_fw_mlr$model, condo_bw_mlr$model, condo_sb_mlr)
+```
+
+``` r
+plot(metric)
+```
+
+``` r
+ggcoefstats(condo_sb_mlr$model, sort = "ascending")
+```
+
+``` r
+check_collinearity(condo_sb_mlr$model)
+```
+
+``` r
+plot(check_collinearity(condo_sb_mlr$model)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+``` r
+out <- plot(check_model(condo_sb_mlr$model, panel = FALSE))
+out[[2]]
+```
+
+``` r
+plot(check_normality(condo_sb_mlr$model))
+```
+
+```         
+outliers <- check_outliers(condo_sb_mlr$model, method = "cook")
+```
+
+``` r
+mlr_output <- as.data.frame(condo_fw_mlr$model$residuals) %>% rename(`FW_MLR_RES` = `condo_fw_mlr$model$residuals`)
+```

@@ -1,0 +1,737 @@
+---
+title: "Take Home Exercise 3"
+author: "Eugene Toh"
+date: "last-modified"
+execute:
+  freeze: true
+---
+
+The Philippines' "War on Drugs," initiated under President Rodrigo Duterte's administration in 2016, represents one of the most controversial law enforcement campaigns in recent Southeast Asian history. This study employs advanced geospatial analytical techniques to examine the spatial and temporal distribution of drug-related killings across the Philippine archipelago from 2016 to 2024. Through Spatial Point Patterns Analysis and Spatio-Temporal Point Patterns Analysis, this research seeks to identify potential geographic clustering of incidents and evaluate the evolving pattern of cases across two presidential administrations. By analyzing the geographic distribution and temporal trends of these events, this study aims to provide empirical insights into both the implementation of the anti-drug campaign under both President Duterte's and President Ferdinand Marcos Jr.'s administration, contributing to a data-driven understanding of this significant public policy issue.
+
+# Main data processing
+
+## Import dependencies
+
+```{r}
+pacman::p_load(sf, tidyverse, tmap, spdep, knitr)
+```
+
+## Import data
+
+```{r}
+provinces_sf <- st_read("data", layer = "phl_admbnda_adm2_psa_namria_20231106")
+drugs_data <- read_csv("data/2016-01-01-2024-06-30-Philippines.csv")
+
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(provinces_sf) +
+  tm_polygons() +
+  tm_text("ADM2_EN", col = "blue", size = 0.5, remove.overlap = TRUE)
+```
+
+## Data wrangling
+
+To combine the geographical spatial data with the aspatial drug cases data, we need to make sure that the province names in both data-frames are normalised.
+
+```{r}
+can_be_left_joined <- all(provinces_sf$ADM2_EN %in% drugs_data$admin2)
+can_be_left_joined
+```
+
+It seems like not all province names in `drugs_data` is found in `provinces_sf`. This could be due to irregular naming conventions. Let's see what are the discrepancies.
+
+```{r}
+# values in provinces_sf not in drugs_data
+non_matching_values <- setdiff(provinces_sf$ADM2_EN, drugs_data$admin2)
+non_matching_values
+```
+
+As we can see, we have 18 province names that are not found in `drugs_data`.
+
+```{r}
+unique_values <- sort(unique(drugs_data$admin2))
+unique_values
+```
+
+However, upon further analysis the names seem to all be in order, except the fact that the provinces of Aurora, Batanes, Biliran, Camiguin, Dinagat Islands, Eastern Samar, Ilocos Norte, Romblon are not mentioned in the drug data. It seems like no drug cases has ever been reported according to our data from the year 2016 to 2024.
+
+Many of these areas (Batanes, Camiguin, Dinagat Islands, Romblon) are island provinces and Aurora and Eastern Samar are relatively remote. These areas have more dispersed populations and are less accessible, and hence limited infrastructure might affect both drug trafficking and reporting.
+
+Let's map it out to see what this is all about.
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+not_in_data <- c("Aurora", "Batanes", "Biliran", "Camiguin", "Dinagat Islands", "Eastern Samar", "Mountain Province", "Romblon")
+tmap_mode("plot")
+tm_shape(provinces_sf) +
+  tm_polygons() +
+  tm_shape(provinces_sf %>% filter(ADM2_EN %in% not_in_data)) +
+  tm_polygons(col = "red") +
+  tm_text("ADM2_EN", col = "black", remove.overlap = TRUE)
+```
+
+Now, we need to rename the province names in both sets of data to make them consistent so joining can occur.
+
+```{r}
+drugs_data <- drugs_data %>% mutate(admin2 = recode(admin2, "Metropolitan Manila" = "Metro Manila"))
+```
+
+```{r}
+province_names <- sort(provinces_sf$ADM2_EN)
+province_names
+```
+
+```{r}
+# NOTE: The City of Isabela is treated separately from Basilan province as it is a component city but belongs to a different region than its mother province, but we will merge both of them to make this simpler to understand
+provinces_sf <- provinces_sf %>% mutate(ADM2_EN = recode(ADM2_EN, "City of Isabela (not a province)" = "Basilan", "Cotabato (North Cotabato)" = "Cotabato", "Davao de Oro (Compostela Valley)" = "Davao de Oro", "Samar (Western Samar)" = "Samar", "Metropolitan Manila First District" = "Metro Manila", "Metropolitan Manila Second District" = "Metro Manila", "Metropolitan Manila Third District" = "Metro Manila", "Metropolitan Manila Fourth District" = "Metro Manila"))
+```
+
+Now, I just need to make sure that there are no provinces that I missed.
+
+```{r}
+non_matching_values <- setdiff(drugs_data$admin2, provinces_sf$ADM2_EN)
+non_matching_values
+```
+
+Nice!
+
+Now, we simply need to merge the duplicate provinces together in `provinces_sf`.
+
+```{r}
+provinces_sf <- provinces_sf %>% select(1, 14)
+```
+
+```{r}
+merged_provinces_sf <- provinces_sf %>% group_by(ADM2_EN) %>% summarise(geometry = st_union(geometry))
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tmap_mode("plot")
+tm_shape(merged_provinces_sf %>% filter(ADM2_EN == "Metro Manila")) +
+  tm_polygons() +
+  tm_text("ADM2_EN", col = "blue", size = 0.5, remove.overlap = TRUE)
+```
+
+# Are the number of cases of drug related incidents in Philippines affected by location, or do they stay the same no matter where you are in the country?
+
+Analyzing the spatial distribution of drug-related cases across the Philippines is crucial for understanding whether geographic location plays a significant role in their occurrence. This section employs global measures of spatial autocorrelation to systematically examine whether these cases exhibit spatial dependence or if they are randomly distributed across the country. Through the application of Moran's I and Geary's C statistics, we can quantitatively assess whether provinces with high numbers of cases tend to cluster together (positive spatial autocorrelation), if they are dispersed (negative spatial autocorrelation), or if the distribution shows no significant spatial pattern (spatial randomness). These global indicators provide a comprehensive first step in understanding the broad spatial patterns of drug-related cases, helping to determine whether the phenomenon is inherently geographic in nature or independent of location within the Philippine archipelago.
+
+## Data wrangling
+
+We are going to analyse events by year, and analyse all types of events as a whole. That is, we are going to aggregate all types of events together and treat them all as drug related incidents. We are going to ignore the `fatalities` column in this case, as we personally find counting the number of events is more useful than counting the number of people affected in an event, especially since some events have essentially 0 fatalities, and hence that event would not be counted even if it is significant.
+
+First, we select only the year and province name columns so we don't get distracted by any of the event type columns. Then, we create a new column called `num_events` to summarise the number of events for each province for each year. `.groups = "drop"` is used to automatically ungroup. We then rename the province name column from `admin2` to `ADM2_EN` to ensure that `left_join` joins on the province name column.
+
+```{r}
+drug_data_agg <- drugs_data %>% select(3, 20) %>% group_by(year, admin2) %>% summarise(num_events = n(), .groups = "drop") %>% rename(ADM2_EN = admin2)
+```
+
+```{r}
+province_drug_stats <- left_join(merged_provinces_sf, drug_data_agg)
+```
+
+This duplicates the same polygons for each year, so it might not be the most memory efficient operation, but it is definitely the easiest to reason about later.
+
+```{r}
+province_drug_stats %>% kable()
+```
+
+As you can see, there are some rows with `NA` values. That is because not all provinces have drug event information. Hence, some rows are not able to join correctly. We will have to remove them.
+
+```{r}
+province_drug_stats <- province_drug_stats %>% na.omit()
+```
+
+::: callout-note
+Note that we will end up not using `province_drug_stats` but `province_drug_stats_all` instead for the rest of this exercise, but I will still leave this in for illustrative purposes and/or if I decide to use the former again for some reason in the future.
+:::
+
+We are also going to prepare a copy that is not delineated by year, but by the entire duration. This is such that we are able to perform spatial point patterns analysis on the entire duration of 2016-2024.
+
+```{r}
+drug_data_year_agg <- drugs_data %>% select(3, 20) %>% group_by(admin2) %>% summarise(num_events = n(), .groups = "drop") %>% rename(ADM2_EN = admin2)
+province_drug_stats_all <- left_join(merged_provinces_sf, drug_data_year_agg)
+province_drug_stats_all <- province_drug_stats_all %>% na.omit()
+```
+
+```{r}
+province_drug_stats_all %>% kable()
+```
+
+## Analysis
+
+### Data wrangling
+
+Before we do any analysis, we need to generate the nearest neighbours of each province.
+
+When creating spatial weights, we use row standardization (style = 'W'), where each neighbor receives equal influence by being assigned a weight of 1 divided by the total number of neighbors. For example, if a province has four neighbours, each neighbor gets a weight of 1/4. While this approach is intuitive, it has a limitation: provinces at the edges of the Philippines (coastal areas or island provinces) have fewer neighbors than inland provinces. This means their spatial calculations are based on fewer observations, which could potentially distort the true spatial patterns in the data. More sophisticated weighting schemes exist, such as the binary weighting method (style="B"). In an archipelagic country like the Philippines, the binary weighting method (style="B") might be more appropriate than row standardization (style="W") due to the country's unique geographic structure. While row standardization divides the influence equally among neighbors (e.g., each of four neighbors gets 1/4 weight), this approach can distort spatial relationships in areas with few neighbors, particularly in island provinces and coastal areas. When a province has only two neighbors under row standardization, each neighbor receives a weight of 1/2, giving them disproportionately high influence compared to neighbors of provinces with many connections, where each might only receive 1/8 weight. Binary weighting addresses this by simply assigning a weight of 1 to each neighbor, regardless of how many neighbors a province has, thereby maintaining the actual strength of connections without artificially inflating the importance of neighbors just because a province has fewer of them. This approach might better represent true spatial relationships across the Philippines' complex island geography. Hence, we will use the binary weighting method instead for this exercise.
+
+Next, given that Philippines is a large archipelago made up of thousands of islands, many simple features (SF) polygons have no neighbours since they are not physically adjacent to one another, and we need to deal with that.
+
+We could simply leave those islands out, but given that the entire Philippines is made up of islands of varying sizes, this would be unacceptable.
+
+Thus, instead of using contiguity-based neighbours, we should use k-nearest neighbours (KNN) instead. With KNN, every province has exactly k neighbors. It captures across-water relationships and maintains connections between islands. Most importantly, it better represents actual spatial interactions in an archipelagic country.
+
+Another possibility would be to use distance-based weighting. However with KNN, it ensures that every polygon has at least a set amount of neighbours, negating the possibility of a polygon not having a neighbour. Distance-based might leave some islands isolated if distance threshold is too small, or include too many neighbors if threshold is too large.
+
+One way to still continue to use distance-based weighting is to use KNN to determine the max distance such that every province has at least one neighbour.
+
+```{r}
+longitude <- map_dbl(province_drug_stats_all$geometry, ~st_centroid(.x)[[1]])
+latitude <- map_dbl(province_drug_stats_all$geometry, ~st_centroid(.x)[[2]])
+coords <- cbind(longitude, latitude)
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = TRUE))
+summary(k1dists)
+```
+
+As you can see, the max distance is 385.26km. We can use that number in our distance-based nearest neighbour calculations.
+
+```{r}
+wm_d <- dnearneigh(coords, 0, 386, longlat = TRUE)
+wm_d
+```
+
+```{r}
+wm_d_lw <- nb2listw(wm_d, style = 'B')
+summary(wm_d_lw)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+plot(province_drug_stats_all$geometry, border="lightgrey")
+plot(wm_d, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+```
+
+However, the distance between islands vary greatly as demonstrated. A single distance threshold that works for Visayas (closely spaced islands) might connect too many neighbors while Palawan to Luzon might leave some areas isolated.
+
+KNN offers more control and provides more consistent spatial relationship measurements across different density areas.
+
+Since we are using KNN, the parameter that matters most to us is `k`.
+
+To figure out what value of `k` we should use, one method is to calculate the average contiguity (or the average number of neighbours), but since we determined calculating contiguity weights is out of the question, let's do some sensitivity analysis instead. We are essentially guess-and-checking different `k` values, and see when does the Moran's I value stabilise (or stops changing drastically).
+
+However to do all that, we need to calculate the centroid of each province to derive a central coordinate (remember, we are not using projected coordinates here).
+
+```{r}
+longitude <- map_dbl(province_drug_stats_all$geometry, ~st_centroid(.x)[[1]])
+latitude <- map_dbl(province_drug_stats_all$geometry, ~st_centroid(.x)[[2]])
+```
+
+Now that we have latitude and longitude, we use `cbind` to put longitude and latitude into the same object.
+
+```{r}
+coords <- cbind(longitude, latitude)
+```
+
+Finally, we can start calculating the weights of each nearest neighbour relationship.
+
+```{r}
+results <- data.frame(k = 2:10, morans_i = NA)
+
+for(k in 2:10) {
+  # Create knn weights
+  nb_k <- knearneigh(coords, k=k) %>%
+    knn2nb()
+  weights_k <- nb2listw(nb_k, style = 'B')
+  
+  # Calculate Moran's I
+  moran <- moran.test(province_drug_stats_all$num_events, weights_k)
+  results$morans_i[results$k == k] <- moran$estimate[1]
+}
+
+print(results)
+```
+
+The ideal `k` value seems to be 7
+
+Now, let's calculate KNN with k = 7.
+
+```{r}
+knn <- knn2nb(knearneigh(coords, k=7))
+knn
+k1dists <- unlist(nbdists(knn, coords, longlat = TRUE))
+summary(k1dists)
+```
+
+Next, `nb2listw` is used to convert the `nb` object into a spatial weights object.
+
+```{r}
+knn_lw <- nb2listw(knn, style = 'B')
+summary(knn_lw)
+```
+
+Now, we can visualise the relationships between each province based on nearest neighbours to make sure that everything works correctly.
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+plot(province_drug_stats_all$geometry, border="lightgrey")
+plot(knn, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+```
+
+If you still want to use a distance based approach to calculate nearest neighbour, feel free to run the following code:
+
+``` r
+knn <- wm_d
+knn_lw <- wm_d_lw
+```
+
+### Moran's I
+
+Now here comes the fun part. We are going to do Moran's I testing, specifically using Monte Carlo hypothesis testing. It measures how much nearby geographic areas are related in terms of a specific variable. It assesses whether similar or dissimilar values are clustered together in space or randomly distributed.
+
+-   A positive Moran's I indicates that similar values tend to cluster
+
+-   A negative value suggests that dissimilar values are near each other
+
+-   A value close to zero implies no spatial autocorrelation, meaning the values are randomly distributed across space
+
+The values range from -1 to 1.
+
+We first need to set a consistent seed to make sure that our results are reproducible across runs. Then, using `global_moran_perm` from `sfdep` we can do hypothesis testing.
+
+``` r
+moran.mc(x,       # The variable you're analyzing (e.g., number of drug cases)
+         listw,   # Spatial weights matrix defining neighborhood relationships
+         nsim,    # Number of simulations for Monte Carlo test (e.g., 999)
+         zero.policy = NULL,  # How to handle regions with no neighbors
+         alternative = "greater")  # Type of alternative hypothesis to test
+```
+
+```{r}
+set.seed(27)
+bperm <- moran.mc(province_drug_stats_all$num_events, listw = knn_lw, zero.policy = TRUE, na.action = na.omit, nsim = 999)
+bperm
+```
+
+The Monte Carlo simulation results for Moran's I provide strong evidence of spatial clustering in drug-related incidents across the Philippines. The positive Moran's I value of 0.20279 indicates that provinces with similar levels of drug-related incidents tend to be located near each other, suggesting a clear pattern of spatial autocorrelation rather than random distribution. This finding is strongly supported by the observed rank of 999 out of 1000 simulations, indicating that our observed pattern is more clustered than almost all randomly generated patterns. Furthermore, the very small p-value of 0.001 suggests only a 0.1% chance that this clustering pattern could occur randomly, providing highly significant statistical evidence that the spatial distribution of drug-related incidents is influenced by geographic location. These results strongly justify the need for further spatial analysis, particularly at the local level, to better understand the geographic patterns of drug-related incidents in the Philippines.
+
+#### Visualisation
+
+To better understand our spatial analysis results, we should visualize the distribution of simulated Moran's I values. By creating a histogram of these simulated values and marking our observed Moran's I, we can visually assess how unusual our observed value is compared to what we would expect under spatial randomness. We'll use R's basic plotting functions `hist()` to create the histogram and `abline()` to add a vertical line showing our observed value.
+
+```{r}
+mean(bperm$res[1:999])
+```
+
+```{r}
+var(bperm$res[1:999])
+```
+
+```{r}
+summary(bperm$res[1:999])
+```
+
+```{r}
+hist(bperm$res, 
+     freq=TRUE, 
+     breaks=20, 
+     xlab="Simulated Moran's I")
+abline(v=0, col="red") 
+```
+
+This resulting histogram shows the distribution of Moran's I values under the null hypothesis (spatial randomness). The rightward skew indicates that even random spatial patterns tend to produce slightly positive Moran's I values. This skewed distribution is why we use Monte Carlo simulation rather than assuming a normal distribution. Our observed value (not shown in this plot) being far to the right would further support that the spatial clustering we found is not just due to random chance.
+
+#### Conclusion
+
+These robust findings emphasize that geographic location plays a crucial role in the distribution of drug-related incidents, with neighboring provinces showing similar patterns, suggesting that interventions should consider spatial relationships rather than treating provinces in isolation. The strength and consistency of these results strongly justify further investigation into local spatial patterns to better understand the specific nature of these clusters across the Philippines, which could significantly inform targeted policy and enforcement strategies.
+
+### Geary's C
+
+``` r
+geary.mc(x,       # The variable you're analyzing (e.g., number of drug cases)
+         listw,   # Spatial weights matrix defining neighborhood relationships
+         nsim,    # Number of simulations for Monte Carlo test (e.g., 999)
+         zero.policy = NULL,  # How to handle regions with no neighbors
+         alternative = "greater")  # Type of alternative hypothesis to test
+```
+
+```{r}
+cperm <- geary.mc(province_drug_stats_all$num_events, listw = knn_lw, nsim = 999)
+cperm
+```
+
+We are running 1001 simulations to raise the confidence of our result.
+
+From our data, we have a `statistic` of 1.0715 which is the observed value of Geary C based on the actual data. Geary's C typically ranges between 0 and 2.
+
+-   C ≈ 1 indicates no spatial autocorrelation (random spatial distribution).
+
+-   C \< 1 suggests positive spatial autocorrelation (neighboring areas are more similar).
+
+-   C \> 1 indicates negative spatial autocorrelation (neighboring areas are dissimilar).
+
+The Monte Carlo simulation results for Geary's C reveal a different perspective on the spatial patterns of drug-related incidents in the Philippines. The Geary's C value of 1.0715 is very close to 1, suggesting only weak positive spatial autocorrelation when comparing neighboring provinces directly. This interpretation is supported by the observed rank of 717 out of 1000 simulations, placing our observed pattern roughly in the middle of the distribution rather than at an extreme. The high p-value of 0.717 indicates a 71.7% chance that this pattern could occur under spatial randomness, well above conventional significance levels. Unlike the Moran's I results, these Geary's C findings suggest that when examining immediate neighbor relationships, the spatial pattern of drug-related incidents is not significantly different from what we might expect by chance. This apparent contradiction with Moran's I results likely stems from Geary's C's focus on local comparisons rather than global patterns, suggesting that while broad regional patterns exist, the relationship between immediate neighbors might be more complex or variable.
+
+Therefore, we might need to consider both global and local patterns using techniques like LISA statistics.
+
+```{r}
+hist(cperm$res, freq=TRUE, breaks=20, xlab="Simulated Geary's C")
+abline(v=1, col="red")
+```
+
+Since this histogram is approximately symmetrical around 1, this suggests almost perfect spatial randomness for Geary's C. A symmetry around 1 suggests that there is an equal likelihood of getting slightly positive or negative spatial autocorrelation by chance. This is consistent with my earlier interpretation of the data having a weak positive spatial autocorrelation.
+
+# Where are the main areas of concentrated drug abuse, and are there any unusual patterns or high-risk spots?
+
+To identify specific areas of concentrated drug-related incidents in the Philippines, we employ two complementary local spatial analysis techniques: Local Indicators of Spatial Association (LISA) and Getis-Ord Gi\* statistics. While our previous global spatial autocorrelation analysis confirmed the presence of spatial clustering across the country, these local measures allow us to pinpoint exactly where these clusters occur and distinguish between different types of spatial associations. LISA analysis helps identify not only clusters of high-value areas (hot spots) and low-value areas (cold spots) but also spatial outliers where provinces differ significantly from their neighbors. The Getis-Ord Gi\* statistic complements this by specifically identifying statistically significant hot spots and cold spots, providing a comprehensive understanding of where drug-related incidents are concentrated and where they are notably absent. Together, these methods enable us to map and analyze the geographic distribution of drug-related incidents at a more granular level, crucial for targeted policy interventions.
+
+## Analysis
+
+LISA identifies clusters and outliers by calculating spatial autocorrelation for individual spatial units such as provinces rather than the entire dataset, as global Moran's I does.
+
+For example, if you were analyzing the number of cases of drug use across different provinces in Philippines, LISA would allow you to identify which provinces have drug use counts that are spatially autocorrelated with neighboring provinces. It can highlight specific counties where drug use is either unusually high or low compared to their surroundings.
+
+### Local Indicators of Spatial Association (LISA) - Anselin's Local Moran's I
+
+#### Data wrangling
+
+By mapping out the p-value of Local Moran's I (LISA), we can determine the statistical significance of the observed local spatial autocorrelation. This step is crucial because it helps distinguish between areas where the clustering or dispersion of drug cases is meaningful and areas where any observed pattern could be due to random chance.
+
+To identify local spatial clusters and outliers, we'll use the `localmoran()` function from the `spdep` package. This function calculates local Moran's I values (Ii) for each province. It takes two main inputs: the province-level drug incident counts (zi values) and our previously created spatial weights matrix that defines each province's neighbors and their relationships. The resulting Ii values will help us identify where significant spatial clusters or outliers exist in our drug incident data across the Philippines.
+
+``` r
+localmoran(x,          # The variable you're analyzing (e.g., number of drug cases)
+           listw,      # Spatial weights matrix defining neighborhood relationships
+           zero.policy = NULL,    # How to handle regions with no neighbors
+           na.action = na.fail,   # How to handle NA values
+           alternative = "two.sided",  # Type of alternative hypothesis
+           p.adjust.method = "none",   # Method for p-value adjustment
+           mlvar = TRUE,              # Whether to compute mean and variance
+           spChk = NULL)             # Spatial weights check
+```
+
+```{r}
+fips <- order(province_drug_stats_all$ADM2_EN)
+localMI <- localmoran(province_drug_stats_all$num_events, knn_lw)
+head(localMI)
+```
+
+The `localmoran()` function produces five important values for each location (province in our case):
+
+1.  Local Moran's I (Ii): The actual measure of local spatial autocorrelation
+
+2.  Expected Value (E.Ii): What value we would expect if there was no spatial pattern
+
+3.  Variance (Var.Ii): How much we expect the value to vary under spatial randomness
+
+4.  Z-score (Z.Ii): How many standard deviations the actual value is from what we expect
+
+5.  P-value (Pr()): The statistical significance of the spatial pattern, indicating how likely the observed pattern could occur by chance
+
+These values help us determine which provinces show significant spatial clustering or outlier patterns in drug-related incidents.
+
+The code chunk below uses `printCoefmat()` to display the local Moran's I statistics in a formatted table, making it easier to examine the results for each province.
+
+```{r}
+printCoefmat(data.frame(
+  localMI[fips,], 
+  row.names=province_drug_stats_all$ADM2_EN[fips]),
+  check.names=FALSE)
+```
+
+To visualize our local Moran's I results geographically, we first need to join the local Moran's I statistics with our spatial data. We'll add these new statistical values to our existing spatial dataframe of provinces, allowing us to create maps that show spatial clustering patterns.
+
+```{r}
+provinces.localMI <- cbind(province_drug_stats_all, localMI) %>%
+  rename(Pr.Ii = Pr.z....E.Ii..)
+```
+
+#### Visualisation
+
+This code below creates a side-by-side visualization of two key aspects of our local Moran's I analysis. The left map displays the local Moran's I statistics for each province using a red-blue color scheme, where contrasting colors help identify clusters and outliers. The right map shows the statistical significance (p-values) of these patterns using varying shades of blue, with darker blues indicating higher statistical significance at different thresholds (0.001, 0.01, 0.05, and 0.1). The maps are arranged horizontally with equal aspect ratios, allowing us to simultaneously examine both the strength of spatial associations and their statistical significance across the Philippines. Province boundaries are shown with semi-transparent borders (alpha = 0.5) to maintain visibility of the underlying patterns while preserving provincial context.
+
+```{r}
+#| fig-width: 12
+#| fig-height: 6
+localMI.map <- tm_shape(provinces.localMI) +
+  tm_fill(col = "Ii", 
+          style = "pretty",
+          palette = "RdBu",
+          title = "Local Moran statistics") +
+  tm_borders(alpha = 0.5)
+
+pvalue.map <- tm_shape(provinces.localMI) +
+  tm_fill(col = "Pr.Ii", 
+          breaks=c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+          palette="-Blues", 
+          title = "Local Moran's I p-values") +
+  tm_borders(alpha = 0.5)
+
+tmap_arrange(localMI.map, pvalue.map, asp=1, ncol=2)
+```
+
+The local Moran's I (Ii) tells you the direction and strength of spatial clustering. A positive Ii means that province is similar to neighbors, which means that clustering occurs, and vice versa. If the Ii is close to zero, it means that no spatial patterns are detected. p-values tell you how statistically significant the pattern is.
+
+Common thresholds:
+
+-   p \< 0.001: Very strong evidence
+
+-   p \< 0.01: Strong evidence
+
+-   p \< 0.05: Evidence
+
+-   p \< 0.1: Weak evidence
+
+-   p \> 0.1: No significant evidence
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tm_shape(provinces.localMI) +
+  tm_fill(col = "Ii", 
+          style = "pretty",
+          palette = "RdBu",
+          title = "Local Moran statistics") +
+  tm_borders(alpha = 0.5) +
+  tm_text("ADM2_EN", col = "orange", size = 0.5, remove.overlap = TRUE)
+```
+
+In the diagram, you can see that the province of Bulacan and the national capital region exhibit high amounts of clustering, and this is supported by their high p-values of less than 0.001, which suggests a very strong evidence of clustering.
+
+The provinces of Bataan, Zambales, Tarlac, and Occidental Mindoro has a very strong evidence of a low amounts of clustering, supported by their negative Ii and p-values of less than 0.001.
+
+#### Conclusion
+
+This LISA (Local Indicators of Spatial Association) analysis reveals distinct patterns of drug-related incidents in the Philippines:
+
+First, Bulacan and the National Capital Region show significant high-high clustering (positive Ii with p \< 0.001), meaning these areas consistently have high numbers of drug-related incidents and are surrounded by other areas with similarly high numbers. This suggests a concentrated hot spot of drug-related activities in the metropolitan region, likely influenced by factors such as urban density, economic activity, and interconnected transportation networks.
+
+In contrast, provinces like Bataan, Zambales, Tarlac, and Occidental Mindoro demonstrate significant low-low clustering (negative Ii with p \< 0.001), indicating these areas have low numbers of incidents and are surrounded by areas with similarly low numbers. This pattern is particularly interesting given some of these provinces' proximity to the high-incident metro area, suggesting that certain geographic, socio-economic, or administrative factors might be effectively limiting the spread of drug-related activities into these regions.
+
+These findings highlight the strong spatial component of drug-related incidents in the Philippines, with clear geographic patterns that could inform targeted intervention strategies and resource allocation for drug prevention and control efforts.
+
+#### Moran scatterplot
+
+In order to better understand the nature and strength of spatial relationships in drug-related incidents across provinces, we will analyze the Moran scatterplot using standardized variables. By standardizing our data, we can interpret values in terms of standard deviations from the mean, making it easier to identify significant patterns and outliers. The Moran scatterplot will display each province's standardized drug incident rate on the x-axis against its spatially lagged standardized values (weighted average of neighboring provinces) on the y-axis. This visualization helps us identify four types of spatial associations: high-high clusters (upper-right quadrant), low-low clusters (lower-left quadrant), and spatial outliers where provinces differ significantly from their neighbors (upper-left and lower-right quadrants). Through this standardized approach, we can more intuitively interpret the relative positions of provinces and their spatial relationships.
+
+First, we'll standardize our variable using the `scale()` function. This process transforms our data by:
+
+1.  Centering: Subtracting the mean value from each observation
+
+2.  Scaling: Dividing each centered value by the standard deviation
+
+This standardization allows us to express our drug incident values in terms of how many standard deviations they are from the mean, making patterns and outliers easier to identify.
+
+```{r}
+province_drug_stats_all$Z.cases <- scale(province_drug_stats_all$num_events) %>% as.vector 
+```
+
+The `as.vector()` function ensures our standardized values are in a simple vector format that can be easily incorporated into our dataframe. With our data now standardized and properly formatted, we can create the Moran scatterplot to visualize spatial relationships between provinces and their neighbors.
+
+This Moran scatterplot below shows drug incidents in each province (x-axis) against the average drug incidents in their neighboring provinces (y-axis), with both variables standardized (shown as z-scores). The plot reveals spatial patterns by dividing into quadrants
+
+``` r
+moran.plot(x,          # The variable you're analyzing (e.g., number of drug cases)
+           listw,      # Spatial weights matrix defining neighborhood relationships
+           zero.policy = NULL,    # How to handle regions with no neighbors
+           spChk = NULL,         # Spatial weights check
+           labels = NULL,        # Labels for points (e.g., province names)
+           xlab = NULL,         # Label for x-axis
+           ylab = NULL,         # Label for y-axis
+           quiet = NULL)        # Whether to suppress messages
+```
+
+```{r}
+nci <- moran.plot(province_drug_stats_all$Z.cases, knn_lw,
+                   labels=as.character(province_drug_stats_all$ADM2_EN),
+                   xlab="z-cases 2012",
+                   ylab="Spatially Lagged z-cases")
+```
+
+-   **Upper-right (HH)**: Provinces with high drug incidents near other high-incident provinces
+
+-   **Lower-left (LL)**: Provinces with low drug incidents near other low-incident provinces
+
+-   **Lower-right (HL)**: High-incident provinces surrounded by low-incident provinces (spatial outliers)
+
+-   **Upper-left (LH)**: Low-incident provinces surrounded by high-incident provinces (spatial outliers)
+
+#### Plotting LISA map
+
+Let's create a LISA (Local Indicators of Spatial Association) cluster map to visualize significant spatial clusters and outliers of drug-related incidents across provinces.
+
+```{r}
+quadrant <- vector(mode="numeric",length=nrow(localMI))
+```
+
+We'll then calculate the weighted average of drug cases in neighboring provinces (spatial lag) and standardize these values by centering them around their mean. This allows us to compare each province's values with the average of its neighbours.
+
+```{r}
+province_drug_stats_all$lag_cases <- lag.listw(knn_lw, province_drug_stats_all$num_events)
+DV <- province_drug_stats_all$lag_cases - mean(province_drug_stats_all$lag_cases)     
+```
+
+Next, we'll standardize the local Moran's I values by centering them around their mean, making it easier to identify significant deviations from average spatial patterns.
+
+```{r}
+LM_I <- localMI[,1] - mean(localMI[,1])
+```
+
+Let's then establish a significance threshold (p-value) to determine which local Moran's I values represent statistically significant spatial patterns.
+
+```{r}
+signif <- 0.05
+```
+
+Let's identify the four types of spatial clusters:
+
+-   Low-Low (1): Provinces with low values near other low values
+
+-   Low-High (2): Provinces with low values near high values
+
+-   High-Low (3): Provinces with high values near low values
+
+-   High-High (4): Provinces with high values near other high values
+
+```{r}
+quadrant[DV <0 & LM_I>0] <- 1
+quadrant[DV >0 & LM_I<0] <- 2
+quadrant[DV <0 & LM_I<0] <- 3
+quadrant[DV >0 & LM_I>0] <- 4
+```
+
+Finally, we'll assign a value of 0 to provinces where the local Moran's I values are not statistically significant, indicating areas with no clear spatial clustering pattern.
+
+```{r}
+quadrant[localMI[,5]>signif] <- 0
+```
+
+Let's create a map to visualize these LISA (Local Indicators of Spatial Association) classifications, showing where significant spatial clusters and outliers occur across the Philippines.
+
+```{r}
+#| fig-width: 12
+#| fig-height: 6
+cases <- qtm(province_drug_stats_all, "num_events")
+
+provinces.localMI$quadrant <- quadrant
+colors <- c("#ffffff", "#2c7bb6", "#abd9e9", "#fdae61", "#d7191c")
+clusters <- c("insignificant", "low-low", "low-high", "high-low", "high-high")
+
+LISAmap <- tm_shape(provinces.localMI) +
+  tm_fill(col = "quadrant", 
+          style = "cat", 
+          palette = colors[c(sort(unique(quadrant)))+1], 
+          labels = clusters[c(sort(unique(quadrant)))+1],
+          popup.vars = c("")) +
+  tm_view(set.zoom.limits = c(11,17)) +
+  tm_borders(alpha=0.5)
+
+tmap_arrange(cases, LISAmap, 
+             asp=1, ncol=2)
+```
+
+Low-high: Regions with low values and neighboring regions with high values (negative deviation with positive local Moran’s I). This quadrant identifies low-value outliers surrounded by high-value areas.
+
+High-low: Regions with high values and neighboring regions with low values (positive deviation with negative local Moran’s I). This quadrant identifies high-value outliers surrounded by low-value areas.
+
+Low-low: Regions with low values and neighboring regions also with low values (negative deviation with negative local Moran’s I). This identifies clusters of low values, where both the region and its neighbors have similarly low values.
+
+High-high: Regions with high values and neighboring regions also with high values (positive deviation with positive local Moran’s I). This identifies clusters of high values, where both the region and its neighbors have high values.
+
+High-high and low-low are considered clusters. High-low and low-high are considered outliers.
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tm_shape(provinces.localMI) +
+  tm_fill(col = "quadrant", 
+          style = "cat", 
+          palette = colors[c(sort(unique(quadrant)))+1], 
+          labels = clusters[c(sort(unique(quadrant)))+1],
+          popup.vars = c("")) +
+  tm_text("ADM2_EN", col = "yellow", size = 0.5, remove.overlap = TRUE) +
+  tm_view(set.zoom.limits = c(11,17)) +
+  tm_borders(alpha=0.5)
+```
+
+The LISA analysis reveals a distinct spatial pattern centered around Metro Manila, where multiple provinces exhibit high-high clustering, indicating a concentrated area of drug-related incidents that spans across neighboring provinces. In contrast, provinces like Bataan, Occidental Mindoro, Bataan, Zambales, and Tarlac emerge as low-high outliers, maintaining lower incident rates despite their proximity to areas of high drug-related activity.
+
+The distinct spatial patterns revealed by the LISA analysis suggest that drug-related incidents in the Philippines follow a complex geographic distribution that isn't solely determined by proximity to high-incident areas. The strong high-high clustering around Metro Manila indicates that urban agglomeration, shared infrastructure, and interconnected socio-economic networks likely facilitate the concentration of drug-related activities in the metropolitan region.
+
+However, the presence of low-high outliers (Bataan, Occidental Mindoro, Zambales, and Tarlac) demonstrates that proximity to high-incident areas doesn't inevitably lead to high numbers of drug-related incidents. These provinces' success in maintaining lower rates despite their location near Metro Manila's hot spot suggests that local factors such as effective enforcement strategies, geographic barriers, or distinct socio-economic conditions can successfully mitigate the spread of drug-related activities. This finding is particularly significant as it indicates that local interventions and characteristics can overcome the influence of neighboring high-incident areas.
+
+These patterns suggest that drug prevention and control strategies should be tailored to local contexts rather than assuming a one-size-fits-all approach. Understanding how these low-high outlier provinces maintain their status could provide valuable insights for developing effective intervention strategies in other regions facing similar challenges.
+
+### Getis-Ord Gi Statistic
+
+Hotspot and coldspot analysis is a spatial statistical method used to pinpoint areas where high or low values of a specific variable cluster together geographically. It aids in uncovering significant spatial patterns, emphasizing regions where extreme values, either high or low, are concentrated.
+
+We need to use data from nearest neighbour column to calculate the inverse of the distance between each neighbour.
+
+Areas with higher Gi values in Getis-Ord Gi analysis represent hotspots, in which regions with a higher than expected GDP per capita cluster together. Note that hotspots and coldspots are not considered outliers.
+
+Since we are using adaptive distance earlier, we will similarly use adaptive distance weights for the sake of consistency.
+
+This code below calculates the Getis-Ord Gi\* statistic for each province to identify significant hot spots and cold spots of drug-related incidents across the Philippines. Using our k-nearest neighbors spatial weights, the `localG()` function computes these statistics for each province based on their drug incident counts. We then append these Gi\* values to our existing provincial dataset and rename the new column to 'gstat_adaptive', creating a comprehensive dataset that includes both our original data and the hot spot analysis results. This analysis will help us identify where significantly high or low numbers of drug-related incidents are clustering geographically.
+
+``` r
+localG(x,           # The variable you're analyzing (e.g., number of drug cases)
+       listw,       # Spatial weights matrix defining neighborhood relationships
+       zero.policy = NULL,     # How to handle regions with no neighbors
+       spChk = NULL,          # Spatial weights check
+       return_internals = FALSE)  # Whether to return internal calculations
+```
+
+```{r}
+gi.adaptive <- localG(province_drug_stats_all$num_events, knn_lw)
+cases.gi <- cbind(province_drug_stats_all, as.matrix(gi.adaptive)) %>%
+  rename(gstat_adaptive = as.matrix.gi.adaptive.)
+```
+
+Let's create a choropleth map using the `tmap` package to visualize where significant hot spots and cold spots of drug-related incidents are located across the Philippines. This visualization will display the Gi\* statistics we calculated using our k-nearest neighbor weights, helping us identify areas with unusually high or low concentrations of drug-related incidents.
+
+```{r}
+#| fig-width: 12
+#| fig-height: 6
+Gimap <- tm_shape(cases.gi) + 
+  tm_fill(col = "gstat_adaptive", 
+          style = "pretty", 
+          palette="-RdBu", 
+          title = "local Gi") + 
+  tm_borders(alpha = 0.5)
+
+tmap_arrange(cases, 
+             Gimap, 
+             asp=1, 
+             ncol=2)
+```
+
+A high Gi value (positive z-score) indicates a hotspot, meaning the area has a concentration of high values (e.g., high number of drug cases) surrounded by other areas with similarly high values. This means that not only is the value in that area high, but the surrounding areas also exhibit high values, forming a cluster of high-intensity activity.
+
+A low Gi value (negative z-score) indicates a coldspot, meaning the area has a concentration of low values surrounded by other areas with similarly low values. A low cluster suggests that the area and its neighbors are consistently below the overall average, indicating a region of low intensity.
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+tm_shape(cases.gi) + 
+  tm_fill(col = "gstat_adaptive", 
+          style = "pretty", 
+          palette="-RdBu", 
+          title = "local Gi") + 
+  tm_borders(alpha = 0.5) +
+  tm_text("ADM2_EN", col = "yellow", size = 0.5, remove.overlap = TRUE)
+```
+
+The Getis-Ord Gi\* statistics reveal a clear core-periphery pattern of drug-related incidents in the Philippines, with the highest concentrations forming a contiguous region around Metro Manila. The provinces with the highest Gi\* values (4-5) form a concentrated cluster including Metro Manila and its immediately surrounding provinces, suggesting that drug-related activities are most intense in this highly urbanized, interconnected region.
+
+This pattern demonstrates a clear spatial gradient, with Gi\* values gradually decreasing as distance from Metro Manila increases. The moderately high values (3-4) in provinces like Occidental Mindoro, Oriental Mindoro, Batangas, and Bulacan represent a transition zone, while provinces in the Visayas region (like Antique, Capiz, Iloilo) show significantly lower values (0-1). The lowest values (-1-0) are found in the most distant provinces, indicating that the influence of Metro Manila's drug-related patterns diminishes substantially with distance.
+
+This spatial distribution strongly suggests that drug-related incidents are influenced by factors associated with urbanization, population density, and proximity to the capital region. The clear geographic pattern implies that intervention strategies should be regionally coordinated but tailored to the different intensity levels observed across the country, with particularly intensive efforts focused on the high-value cluster around Metro Manila while maintaining preventive measures in lower-value areas.
+
+# Conclusion
+
+The comprehensive spatial analysis of drug-related incidents in the Philippines demonstrates that geographic location plays a crucial role in their distribution, with clear patterns of concentration rather than random dispersion across the country. Multiple analytical methods consistently reveal a primary hot spot centered on Metro Manila and its surrounding provinces, with incident rates generally decreasing as distance from the capital region increases. However, this pattern is not uniform, as evidenced by several noteworthy exceptions such as Bataan and Occidental Mindoro, which maintain lower incident rates despite their proximity to high-incident areas, suggesting the effectiveness of local factors in mitigating drug-related activities.
+
+These findings point to the need for a nuanced approach to drug prevention and control strategies. Rather than implementing uniform policies across all provinces, interventions should combine coordinated regional efforts, particularly around the Metro Manila cluster, with targeted local approaches informed by the success of outlier provinces. The clear spatial patterns indicate that resources and enforcement efforts should be strategically allocated, with intensive focus on identified hot spots while maintaining preventive measures in lower-incident areas. Additionally, the success of certain provinces in maintaining lower incident rates despite challenging geographic contexts offers valuable lessons that could be studied and potentially replicated in other regions.
+
+The strong influence of geographic location on drug-related incidents, combined with the existence of successful outlier provinces, suggests that while spatial proximity to high-incident areas creates risk, it does not inevitably lead to high incident rates. This understanding should inform the development of more effective, geographically-aware intervention strategies that acknowledge both regional patterns and local capabilities in addressing drug-related challenges across the Philippines.
