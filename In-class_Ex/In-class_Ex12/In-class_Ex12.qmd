@@ -1,0 +1,191 @@
+---
+title: "In-class Exercise 12"
+author: "Eugene Toh"
+execute:
+  freeze: true
+---
+
+```{r}
+pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, yardstick, tidyverse, knitr, kableExtra, spatialRF)
+# pacman::p_load(ggstatsplot)
+```
+
+```{r}
+mdata <- read_rds("data/model/mdata.rds")
+```
+
+Reduce dataframe size to reduce computation time.
+
+```{r}
+set.seed(1234)
+HDB_sample <- mdata %>% slice_sample(n = 1500)
+```
+
+```{r}
+overlapping_points <- HDB_sample %>%
+  mutate(overlap = lengths(st_equals(., .)) > 1)
+summary(overlapping_points$overlap)
+```
+
+453 points overlap with each other, since there are multiple properties with separate postal codes that could be in the same place. Therefore, we shift it by 5m.
+
+```{r}
+HDB_sample <- HDB_sample %>% st_jitter(amount = 5)
+```
+
+```{r}
+resale_split <- initial_split(HDB_sample, prop = 6.67/10,) # 65% / 35%
+train_data <- training(resale_split)
+test_data <- training(resale_split)
+
+write_rds(train_data, "data/model/train_data.rds")
+write_rds(test_data, "data/model/test_data.rds")
+```
+
+Checking for multicollinearity (compulsory due to lack of VIF).
+
+```{r}
+mdata_nogeo <- mdata %>% st_drop_geometry()
+# ggstatsplot::ggcormat(mdata_nogeo[, 2:17])
+```
+
+``` r
+gwr_bw_train_ad <- bw.gwr(..., data=train_data, approach = "CV", kernel = "gaussian", adaptive = TRUE, longlat = FALSE)
+gwr_bw_train_ad
+```
+
+Gain performance by hardcoding bandwidth instead of having it find bandwidth on each run. Make sure you run the above command first to figure out the approximate bandwidth.
+
+``` r
+gwr_ad <- bw.gwr(..., data=train_data, bw = 20, kernel = "gaussian", adaptive = TRUE, longlat = FALSE)
+```
+
+``` r
+gwr_pred <- gwr.predict(data=train_data, predictdata = test_data, bw = 20, kernel = "gaussian", adaptive = TRUE, longlat = FALSE)
+```
+
+``` r
+gwr_pred_df <- as.data.frame(gwr_pred$SDF$prediction) %>% rename(gwr_pred = "gwr_pred$SDF$prediction")
+```
+
+First, we extract the coordinates of training and test data sets. If the geometry is not points, we need to extract the centroids of them. Luckily we already are using points.
+
+``` r
+coords <- st_coordinates(HDB_sample)
+coords_train <- st_coordinates(train_data)
+coords_test <- st_coordinates(test_data)
+```
+
+We then drop the geometry column.
+
+``` r
+train_data_nogeom <- train_data %>% st_drop_geometry()
+```
+
+We then calibrate the RF model.
+
+``` r
+rf <- ranger(..., data = train_data_nogeom)
+```
+
+``` r
+test_data_nogeom <- cbind(test_data, coords_test) %>% st_drop_geometry()
+```
+
+Predicting values:
+
+``` r
+rf_pred <- predict(rf, data = test_data_nogeom)
+```
+
+Saving the predicted values:
+
+``` r
+rf_pred_df <- as.data.frame(rf_pred$predictions) %>% rename(rf_pred = "rf_pred$predictions")
+```
+
+Calibrating with GRF:
+
+``` r
+grf_ad <- grf(formula = ..., dframe = train_data_nogeom, bw = 20, kernel = "adaptive", coords = coords_train)
+```
+
+Predicting with the test data:
+
+``` r
+grf_pred <- predict.grf(grf_ad, test_data_nogeom, x.var.name = "X", y.var.name = "Y", local.w = 1, global.w = 0)
+```
+
+Combining model outputs:
+
+``` r
+test_data_pred <- test_data %>%
+  select(resale_price) %>%
+  cbind(gwr_pred_df) %>%
+  cbind(rf_pred_df) %>%
+  cbind(grf_pred_df)
+```
+
+Transposing data:
+
+``` r
+test_longer <- test_data_pred %>%
+  st_drop_geometry() %>%
+  pivot_longer(cols = ends_with("pred"), names_to = "model", values_to = "predicted")
+```
+
+Renaming:
+
+``` r
+model_labels <- c(gwr_pred = "gwr", rf_pred = "Random Forest", grf_pred = "gwRF")
+
+test_longer <- test_longer %>%
+  mutate(model = recode(model, !!!model_labels))
+```
+
+Computing RMSE:
+
+``` r
+rmse_results <- test_longer %>%
+  group_by(model) %>%
+  rmse(truth = resale_price, estimate = predicted) %>%
+  rename(rmse = .estimate) %>%
+  select(model, rmse)
+```
+
+Model comparison with bar charts:
+
+``` r
+ggplot(rmse_results, aes(x = reorder(model, rmse), y = rmse, fill = "skyblue")) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black", width = 0.7) +
+  labs(title = "RMSE comparison of Model", y = "RMSE", x = "Model") +
+  theme_minimal()
+```
+
+Scatter plots:
+
+``` r
+test_longer <- test_longer %>%
+  left_join(rmse_results, by = "model")
+
+ggplot(data = test_longer, aes(x = predicted, y = resale_price)) +
+  facet_wrap(~model) +
+  geom_point() +
+  geom_text(data = test_longer, aes(x = Inf, y = Inf, label = paste("RMSE: ", round(rmse, 2))), hjust = 1.1, vjust = 1.1, color = "black", size = 4)
+```
+
+Getting the variable importance (how much each variable contributes to the model):
+
+``` r
+var_imp <- data.frame(Variable = names(grf_ad$Global.Model$variable.importance), Importance = grf_ad$Global.Model$variable.importance)
+```
+
+Visualising variable importance:
+
+``` r
+ggplot(var_imp, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Variable Importance from Ranger Model", x = "Variables", y = "Importance") +
+  theme_minimal()
+```
